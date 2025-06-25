@@ -1,0 +1,236 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Dracula Theme Colors */
+  --dracula-bg: #282a36;
+  --dracula-current-line: #44475a;
+  --dracula-selection: #44475a;
+  --dracula-foreground: #f8f8f2;
+  --dracula-comment: #6272a4;
+  --dracula-cyan: #8be9fd;
+  --dracula-green: #50fa7b;
+  --dracula-orange: #ffb86c;
+  --dracula-pink: #ff79c6;
+  --dracula-purple: #bd93f9;
+  --dracula-red: #ff5555;
+  --dracula-yellow: #f1fa8c;
+  
+  /* Terminal Window Colors */
+  --terminal-border: #6272a4;
+  --terminal-header: #21222c;
+  --terminal-button-close: #ff5555;
+  --terminal-button-minimize: #f1fa8c;
+  --terminal-button-maximize: #50fa7b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--dracula-bg);
+  color: var(--dracula-foreground);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Terminal Window Styling */
+.terminal-window {
+  background: var(--dracula-bg);
+  border: 2px solid var(--terminal-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.terminal-header {
+  background: var(--terminal-header);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--terminal-border);
+}
+
+.terminal-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.terminal-button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+
+.terminal-button.close {
+  background: var(--terminal-button-close);
+}
+
+.terminal-button.minimize {
+  background: var(--terminal-button-minimize);
+}
+
+.terminal-button.maximize {
+  background: var(--terminal-button-maximize);
+}
+
+.terminal-title {
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 14px;
+  color: var(--dracula-comment);
+  font-weight: 500;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--dracula-current-line);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--dracula-comment);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dracula-purple);
+}
+
+/* Form Elements */
+.terminal-input {
+  background: var(--dracula-current-line) !important;
+  border: 1px solid var(--dracula-comment) !important;
+  color: var(--dracula-foreground) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+.terminal-input:focus {
+  border-color: var(--dracula-purple) !important;
+  box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.2) !important;
+  outline: none !important;
+}
+
+.terminal-input::placeholder {
+  color: var(--dracula-comment) !important;
+}
+
+/* Buttons */
+.terminal-button-primary {
+  background: var(--dracula-purple) !important;
+  color: var(--dracula-bg) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+.terminal-button-primary:hover {
+  background: var(--dracula-pink) !important;
+}
+
+.terminal-button-primary:disabled {
+  background: var(--dracula-comment) !important;
+  cursor: not-allowed !important;
+}
+
+/* Response Area */
+.terminal-output {
+  background: var(--dracula-bg);
+  border: 1px solid var(--dracula-current-line);
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--dracula-foreground);
+}
+
+/* Prompt Styling */
+.terminal-prompt {
+  color: var(--dracula-green);
+  font-weight: 600;
+}
+
+.terminal-prompt::before {
+  content: "➜ ";
+  color: var(--dracula-green);
+}
+
+/* Syntax Highlighting for Code */
+.terminal-keyword {
+  color: var(--dracula-purple);
+}
+
+.terminal-string {
+  color: var(--dracula-yellow);
+}
+
+.terminal-comment {
+  color: var(--dracula-comment);
+  font-style: italic;
+}
+
+.terminal-function {
+  color: var(--dracula-green);
+}
+
+.terminal-variable {
+  color: var(--dracula-cyan);
+}
+
+/* Loading Animation */
+.terminal-loading {
+  color: var(--dracula-cyan);
+}
+
+.terminal-loading::after {
+  content: "";
+  animation: terminal-blink 1s infinite;
+}
+
+@keyframes terminal-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Error Messages */
+.terminal-error {
+  background: rgba(255, 85, 85, 0.1);
+  border: 1px solid var(--dracula-red);
+  color: var(--dracula-red);
+}
+
+/* Success Messages */
+.terminal-success {
+  background: rgba(80, 250, 123, 0.1);
+  border: 1px solid var(--dracula-green);
+  color: var(--dracula-green);
+}
+
+/* Labels */
+.terminal-label {
+  color: var(--dracula-purple);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+/* Selection */
+::selection {
+  background: var(--dracula-selection);
+  color: var(--dracula-foreground);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+} 
