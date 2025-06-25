@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { dracula as draculaTheme } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 interface ChatRequest {
   developer_message: string
@@ -219,7 +222,60 @@ export default function Home() {
                         // AI Response Stream
                       </div>
                       <div className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: 'var(--dracula-foreground)' }}>
-                        {response}
+                        <ReactMarkdown
+                          components={{
+                            h1: ({node, ...props}) => <h1 style={{color: 'var(--dracula-pink)', fontWeight: 700, fontSize: '1.5em', margin: '1em 0 0.5em'}} {...props} />,
+                            h2: ({node, ...props}) => <h2 style={{color: 'var(--dracula-purple)', fontWeight: 700, fontSize: '1.2em', margin: '1em 0 0.5em'}} {...props} />,
+                            h3: ({node, ...props}) => <h3 style={{color: 'var(--dracula-cyan)', fontWeight: 700, fontSize: '1em', margin: '1em 0 0.5em'}} {...props} />,
+                            code({node, inline, className, children, ...props}) {
+                              const match = /language-(\w+)/.exec(className || '')
+                              if (!inline && match) {
+                                return (
+                                  <SyntaxHighlighter
+                                    style={draculaTheme}
+                                    language={match[1]}
+                                    PreTag="div"
+                                    customStyle={{
+                                      borderRadius: 8,
+                                      margin: '0.5em 0',
+                                      fontSize: '0.95em',
+                                      background: 'var(--dracula-current-line)',
+                                    }}
+                                    {...props}
+                                  >
+                                    {String(children).replace(/\n$/, '')}
+                                  </SyntaxHighlighter>
+                                )
+                              } else {
+                                return (
+                                  <code
+                                    className={className}
+                                    style={{
+                                      background: 'var(--dracula-current-line)',
+                                      color: 'var(--dracula-green)',
+                                      borderRadius: 4,
+                                      padding: '2px 6px',
+                                      fontSize: '0.95em',
+                                    }}
+                                    {...props}
+                                  >{children}</code>
+                                )
+                              }
+                            },
+                            blockquote: ({node, ...props}) =>
+                              <blockquote style={{borderLeft: '4px solid var(--dracula-purple)', background: 'rgba(189,147,249,0.08)', color: 'var(--dracula-comment)', padding: '0.5em 1em', margin: '1em 0'}} {...props} />,
+                            a: ({node, ...props}) => <a style={{color: 'var(--dracula-cyan)', textDecoration: 'underline'}} {...props} />,
+                            ul: ({node, ...props}) => <ul style={{marginLeft: '1.5em', listStyle: 'disc'}} {...props} />,
+                            ol: ({node, ...props}) => <ol style={{marginLeft: '1.5em', listStyle: 'decimal'}} {...props} />,
+                            li: ({node, ...props}) => <li style={{margin: '0.25em 0'}} {...props} />,
+                            strong: ({node, ...props}) => <strong style={{color: 'var(--dracula-yellow)'}} {...props} />,
+                            em: ({node, ...props}) => <em style={{color: 'var(--dracula-orange)'}} {...props} />,
+                            hr: ({node, ...props}) => <hr style={{borderColor: 'var(--dracula-comment)', margin: '1em 0'}} {...props} />,
+                            p: ({node, ...props}) => <p style={{margin: '0.5em 0'}} {...props} />,
+                          }}
+                        >
+                          {response}
+                        </ReactMarkdown>
                       </div>
                     </div>
                   )}
