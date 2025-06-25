@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter/dist/esm/prism'
 import { dracula as draculaTheme } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 interface ChatRequest {
