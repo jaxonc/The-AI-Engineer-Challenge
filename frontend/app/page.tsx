@@ -2,8 +2,21 @@
 
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter/dist/esm/prism'
-import { dracula as draculaTheme } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import SyntaxHighlighter from 'react-syntax-highlighter/dist/esm/prism-light'
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import js from 'react-syntax-highlighter/dist/esm/languages/prism/javascript'
+import ts from 'react-syntax-highlighter/dist/esm/languages/prism/typescript'
+import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
+import json from 'react-syntax-highlighter/dist/esm/languages/prism/json'
+
+// Register languages for Prism
+SyntaxHighlighter.registerLanguage('javascript', js)
+SyntaxHighlighter.registerLanguage('js', js)
+SyntaxHighlighter.registerLanguage('typescript', ts)
+SyntaxHighlighter.registerLanguage('ts', ts)
+SyntaxHighlighter.registerLanguage('python', python)
+SyntaxHighlighter.registerLanguage('py', python)
+SyntaxHighlighter.registerLanguage('json', json)
 
 interface ChatRequest {
   developer_message: string
@@ -227,12 +240,13 @@ export default function Home() {
                             h1: ({node, ...props}) => <h1 style={{color: 'var(--dracula-pink)', fontWeight: 700, fontSize: '1.5em', margin: '1em 0 0.5em'}} {...props} />,
                             h2: ({node, ...props}) => <h2 style={{color: 'var(--dracula-purple)', fontWeight: 700, fontSize: '1.2em', margin: '1em 0 0.5em'}} {...props} />,
                             h3: ({node, ...props}) => <h3 style={{color: 'var(--dracula-cyan)', fontWeight: 700, fontSize: '1em', margin: '1em 0 0.5em'}} {...props} />,
-                            code({node, inline, className, children, ...props}) {
-                              const match = /language-(\w+)/.exec(className || '')
+                            code({node, ...props}: any) {
+                              const {inline, className, children, ...rest} = props;
+                              const match = /language-(\w+)/.exec(className || '');
                               if (!inline && match) {
                                 return (
                                   <SyntaxHighlighter
-                                    style={draculaTheme}
+                                    style={dracula}
                                     language={match[1]}
                                     PreTag="div"
                                     customStyle={{
@@ -241,11 +255,11 @@ export default function Home() {
                                       fontSize: '0.95em',
                                       background: 'var(--dracula-current-line)',
                                     }}
-                                    {...props}
+                                    {...rest}
                                   >
                                     {String(children).replace(/\n$/, '')}
                                   </SyntaxHighlighter>
-                                )
+                                );
                               } else {
                                 return (
                                   <code
@@ -257,9 +271,9 @@ export default function Home() {
                                       padding: '2px 6px',
                                       fontSize: '0.95em',
                                     }}
-                                    {...props}
+                                    {...rest}
                                   >{children}</code>
-                                )
+                                );
                               }
                             },
                             blockquote: ({node, ...props}) =>
