@@ -4,10 +4,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // Default to localhost:8000 for the FastAPI backend
-    const apiUrl = process.env.FASTAPI_URL || 'http://localhost:8000'
+    // Use relative path for Vercel deployment, fallback to localhost for local dev
+    const apiUrl = process.env.NODE_ENV === 'production' 
+      ? '/api/chat'  // Use relative path in production (Vercel)
+      : process.env.FASTAPI_URL || 'http://localhost:8000/api/chat'
     
-    const response = await fetch(`${apiUrl}/api/chat`, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -5,11 +5,13 @@ export async function POST(request: NextRequest) {
     // Get the form data from the request
     const formData = await request.formData()
     
-    // Default to localhost:8000 for the FastAPI backend
-    const apiUrl = process.env.FASTAPI_URL || 'http://localhost:8000'
+    // Use relative path for Vercel deployment, fallback to localhost for local dev
+    const apiUrl = process.env.NODE_ENV === 'production' 
+      ? '/api/upload-pdf'  // Use relative path in production (Vercel)
+      : process.env.FASTAPI_URL || 'http://localhost:8000/api/upload-pdf'
     
     // Forward the form data to FastAPI
-    const response = await fetch(`${apiUrl}/api/upload-pdf`, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       body: formData,
     })
