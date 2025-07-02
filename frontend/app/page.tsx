@@ -314,10 +314,33 @@ export default function Home() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target
-    setPdfFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setPdfFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  // Handle single PDF selection
+  const handleSinglePdfSelection = (pdfId: string) => {
+    setSelectedPdfIds(pdfId ? [pdfId] : [])
+  }
+
+  // Handle multiple PDF selection
+  const handleMultiplePdfSelection = (pdfId: string, checked: boolean) => {
+    if (checked) {
+      if (selectedPdfIds.length >= 3) {
+        setError('Maximum 3 PDFs can be selected for analysis')
+        return
+      }
+      setSelectedPdfIds(prev => [...prev, pdfId])
+    } else {
+      setSelectedPdfIds(prev => prev.filter(id => id !== pdfId))
+    }
+    setError('') // Clear any previous error
+  }
+
+  // Handle selection mode change
+  const handleSelectionModeChange = (mode: 'single' | 'multiple') => {
+    setPdfSelectionMode(mode)
+    setSelectedPdfIds([])
+    setError('')
   }
 
   // Initialize PDFs on component mount
