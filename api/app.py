@@ -12,14 +12,6 @@ import asyncio
 from typing import Optional, Dict, Any
 import json
 
-# Import aimakerspace modules
-import sys
-sys.path.append('..')
-from aimakerspace.text_utils import PDFLoader, CharacterTextSplitter
-from aimakerspace.vectordatabase import VectorDatabase
-from aimakerspace.openai_utils.embedding import EmbeddingModel
-from aimakerspace.openai_utils.chatmodel import ChatOpenAI
-
 # Initialize FastAPI application with a title
 app = FastAPI(title="PDF RAG Chat API")
 
@@ -34,7 +26,7 @@ app.add_middleware(
 )
 
 # Global storage for vector databases (in production, use a proper database)
-vector_databases: Dict[str, VectorDatabase] = {}
+vector_databases: Dict[str, Any] = {}
 pdf_metadata: Dict[str, Dict[str, Any]] = {}
 
 # Define the data model for regular chat requests
@@ -89,6 +81,13 @@ async def upload_pdf(
     api_key: str = Form(...)
 ):
     try:
+        # Import aimakerspace modules only when needed
+        import sys
+        sys.path.append('..')
+        from aimakerspace.text_utils import PDFLoader, CharacterTextSplitter
+        from aimakerspace.vectordatabase import VectorDatabase
+        from aimakerspace.openai_utils.embedding import EmbeddingModel
+        
         # Validate file type
         if not file.filename.lower().endswith('.pdf'):
             raise HTTPException(status_code=400, detail="Only PDF files are allowed")
@@ -145,6 +144,11 @@ async def upload_pdf(
 @app.post("/api/chat-pdf")
 async def chat_pdf(request: PDFChatRequest):
     try:
+        # Import aimakerspace modules only when needed
+        import sys
+        sys.path.append('..')
+        from aimakerspace.openai_utils.chatmodel import ChatOpenAI
+        
         # Check if PDF exists
         if request.pdf_id not in vector_databases:
             raise HTTPException(status_code=404, detail="PDF not found")
