@@ -1,21 +1,28 @@
-import numpy as np
+import math
 from collections import defaultdict
 from typing import List, Tuple, Callable, Optional
 from aimakerspace.openai_utils.embedding import EmbeddingModel
 import asyncio
 
 
-def cosine_similarity(vector_a: np.array, vector_b: np.array) -> float:
-    """Computes the cosine similarity between two vectors."""
-    dot_product = np.dot(vector_a, vector_b)
-    norm_a = np.linalg.norm(vector_a)
-    norm_b = np.linalg.norm(vector_b)
+def cosine_similarity(vector_a: List[float], vector_b: List[float]) -> float:
+    """Computes the cosine similarity between two vectors using pure Python."""
+    # Dot product
+    dot_product = sum(a * b for a, b in zip(vector_a, vector_b))
+    
+    # Norms
+    norm_a = math.sqrt(sum(a * a for a in vector_a))
+    norm_b = math.sqrt(sum(b * b for b in vector_b))
+    
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    
     return dot_product / (norm_a * norm_b)
 
 
 class VectorDatabase:
     def __init__(self, embedding_model: Optional[EmbeddingModel] = None):
-        self.vectors = defaultdict(np.array)
+        self.vectors = defaultdict(list)  # Changed from np.array to list
         self._embedding_model = embedding_model
         self._embedding_model_initialized = embedding_model is not None
 
@@ -27,12 +34,12 @@ class VectorDatabase:
             self._embedding_model_initialized = True
         return self._embedding_model
 
-    def insert(self, key: str, vector: np.array) -> None:
+    def insert(self, key: str, vector: List[float]) -> None:
         self.vectors[key] = vector
 
     def search(
         self,
-        query_vector: np.array,
+        query_vector: List[float],
         k: int,
         distance_measure: Callable = cosine_similarity,
     ) -> List[Tuple[str, float]]:
@@ -53,13 +60,13 @@ class VectorDatabase:
         results = self.search(query_vector, k, distance_measure)
         return [result[0] for result in results] if return_as_text else results
 
-    def retrieve_from_key(self, key: str) -> np.array:
-        return self.vectors.get(key, None)
+    def retrieve_from_key(self, key: str) -> List[float]:
+        return self.vectors.get(key, [])
 
     async def abuild_from_list(self, list_of_text: List[str]) -> "VectorDatabase":
         embeddings = await self.embedding_model.async_get_embeddings(list_of_text)
         for text, embedding in zip(list_of_text, embeddings):
-            self.insert(text, np.array(embedding))
+            self.insert(text, embedding)  # embedding is already a list
         return self
 
 
