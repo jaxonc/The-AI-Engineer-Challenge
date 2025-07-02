@@ -8,17 +8,35 @@ import asyncio
 
 class EmbeddingModel:
     def __init__(self, embeddings_model_name: str = "text-embedding-3-small"):
-        load_dotenv()
-        self.openai_api_key = os.getenv("OPENAI_API_KEY")
-        self.async_client = AsyncOpenAI()
-        self.client = OpenAI()
-
-        if self.openai_api_key is None:
-            raise ValueError(
-                "OPENAI_API_KEY environment variable is not set. Please set it to your OpenAI API key."
-            )
-        openai.api_key = self.openai_api_key
         self.embeddings_model_name = embeddings_model_name
+        self._async_client = None
+        self._client = None
+        self._api_key = None
+    
+    def _ensure_clients(self):
+        """Lazy initialization of OpenAI clients"""
+        if self._async_client is None or self._client is None:
+            load_dotenv()
+            self._api_key = os.getenv("OPENAI_API_KEY")
+            
+            if self._api_key is None:
+                raise ValueError(
+                    "OPENAI_API_KEY environment variable is not set. Please set it to your OpenAI API key."
+                )
+            
+            openai.api_key = self._api_key
+            self._async_client = AsyncOpenAI(api_key=self._api_key)
+            self._client = OpenAI(api_key=self._api_key)
+    
+    @property
+    def async_client(self):
+        self._ensure_clients()
+        return self._async_client
+    
+    @property 
+    def client(self):
+        self._ensure_clients()
+        return self._client
 
     async def async_get_embeddings(self, list_of_text: List[str]) -> List[List[float]]:
         embedding_response = await self.async_client.embeddings.create(
