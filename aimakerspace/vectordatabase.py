@@ -1,6 +1,6 @@
 import numpy as np
 from collections import defaultdict
-from typing import List, Tuple, Callable
+from typing import List, Tuple, Callable, Optional
 from aimakerspace.openai_utils.embedding import EmbeddingModel
 import asyncio
 
@@ -14,9 +14,18 @@ def cosine_similarity(vector_a: np.array, vector_b: np.array) -> float:
 
 
 class VectorDatabase:
-    def __init__(self, embedding_model: EmbeddingModel = None):
+    def __init__(self, embedding_model: Optional[EmbeddingModel] = None):
         self.vectors = defaultdict(np.array)
-        self.embedding_model = embedding_model or EmbeddingModel()
+        self._embedding_model = embedding_model
+        self._embedding_model_initialized = embedding_model is not None
+
+    @property
+    def embedding_model(self) -> EmbeddingModel:
+        """Lazy initialization of embedding model"""
+        if not self._embedding_model_initialized:
+            self._embedding_model = EmbeddingModel()
+            self._embedding_model_initialized = True
+        return self._embedding_model
 
     def insert(self, key: str, vector: np.array) -> None:
         self.vectors[key] = vector
