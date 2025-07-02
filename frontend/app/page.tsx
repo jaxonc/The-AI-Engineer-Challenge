@@ -35,6 +35,8 @@ interface PDFChatRequest {
 interface UploadedPDF {
   pdf_id: string
   filename: string
+  source?: string
+  url?: string
   num_chunks: number
   total_characters: number
 }
@@ -70,6 +72,8 @@ export default function Home() {
   const [uploadedPDFs, setUploadedPDFs] = useState<UploadedPDF[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
+  const [uploadType, setUploadType] = useState<'file' | 'url'>('file')
+  const [pdfUrl, setPdfUrl] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch uploaded PDFs on component mount
@@ -130,6 +134,58 @@ export default function Home() {
       setTimeout(() => setUploadProgress(''), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  // Handle PDF URL upload
+  const handleUrlUpload = async () => {
+    if (!pdfUrl.trim()) {
+      setError('Please enter a PDF URL')
+      return
+    }
+
+    if (!apiKey) {
+      setError('Please enter your OpenAI API key first')
+      return
+    }
+
+    setIsUploading(true)
+    setUploadProgress('Downloading PDF from URL...')
+    setError('')
+
+    try {
+      setUploadProgress('Processing and indexing PDF...')
+      
+      const res = await fetch('/api/upload-pdf-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: pdfUrl,
+          api_key: apiKey,
+        }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'URL upload failed')
+      }
+
+      const data = await res.json()
+      setUploadProgress('PDF indexed successfully!')
+      
+      // Refresh the PDF list
+      await fetchPDFs()
+      
+      // Clear the URL input
+      setPdfUrl('')
+
+      setTimeout(() => setUploadProgress(''), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'URL upload failed')
     } finally {
       setIsUploading(false)
     }
@@ -366,16 +422,59 @@ export default function Home() {
                     <div className="space-y-4">
                       <div>
                         <label className="terminal-label block mb-2">
-                          upload_pdf
+                          upload_method
                         </label>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept=".pdf"
-                          onChange={handleFileUpload}
-                          disabled={isUploading || !apiKey}
-                          className="terminal-input w-full px-4 py-3 rounded-md text-sm"
-                        />
+                        <div className="flex gap-2 mb-3">
+                          <button
+                            type="button"
+                            onClick={() => setUploadType('file')}
+                            className={`px-3 py-1 rounded text-xs font-mono ${uploadType === 'file' 
+                              ? 'terminal-button-primary' 
+                              : 'border border-gray-500 text-gray-300'}`}
+                          >
+                            file
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUploadType('url')}
+                            className={`px-3 py-1 rounded text-xs font-mono ${uploadType === 'url' 
+                              ? 'terminal-button-primary' 
+                              : 'border border-gray-500 text-gray-300'}`}
+                          >
+                            url
+                          </button>
+                        </div>
+
+                        {uploadType === 'file' ? (
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".pdf"
+                            onChange={handleFileUpload}
+                            disabled={isUploading || !apiKey}
+                            className="terminal-input w-full px-4 py-3 rounded-md text-sm"
+                          />
+                        ) : (
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              placeholder="https://example.com/document.pdf"
+                              value={pdfUrl}
+                              onChange={(e) => setPdfUrl(e.target.value)}
+                              disabled={isUploading || !apiKey}
+                              className="terminal-input flex-1 px-4 py-3 rounded-md text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleUrlUpload}
+                              disabled={isUploading || !pdfUrl.trim() || !apiKey}
+                              className="terminal-button-primary px-4 py-3 rounded-md text-sm font-mono disabled:opacity-50"
+                            >
+                              upload
+                            </button>
+                          </div>
+                        )}
+
                         {!apiKey && (
                           <div className="text-xs mt-1" style={{ color: 'var(--dracula-orange)' }}>
                             Enter API key first
@@ -413,9 +512,9 @@ export default function Home() {
                           >
                             <option value="">Select a PDF...</option>
                             {uploadedPDFs.map((pdf) => (
-                              <option key={pdf.pdf_id} value={pdf.pdf_id}>
-                                {pdf.filename} ({pdf.num_chunks} chunks)
-                              </option>
+                                                      <option key={pdf.pdf_id} value={pdf.pdf_id}>
+                          {pdf.filename} ({pdf.source === 'url' ? 'URL' : 'File'}, {pdf.num_chunks} chunks)
+                        </option>
                             ))}
                           </select>
                         </div>
