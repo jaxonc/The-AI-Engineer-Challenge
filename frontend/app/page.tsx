@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import SyntaxHighlighter from 'react-syntax-highlighter/dist/esm/prism-light'
 import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism'
@@ -251,9 +251,9 @@ export default function Home() {
   }
 
   // Initialize PDFs on component mount
-  useState(() => {
+  useEffect(() => {
     fetchPDFs()
-  })
+  }, [])
 
   return (
     <div className="min-h-screen p-4" style={{ background: 'var(--dracula-bg)' }}>
@@ -426,7 +426,7 @@ export default function Home() {
 
                 {/* Chat Form */}
                 <form onSubmit={chatMode === 'regular' ? handleRegularChat : handlePDFChat} className="space-y-6">
-                  chatMode === 'regular' && (
+                  {chatMode === 'regular' && (
                     <>
                       {/* System Prompt */}
                       <div>
