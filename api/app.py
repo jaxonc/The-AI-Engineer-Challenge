@@ -41,7 +41,7 @@ class ChatRequest(BaseModel):
 # Define the data model for PDF chat requests
 class PDFChatRequest(BaseModel):
     user_message: str      # Message from the user
-    pdf_id: str           # ID of the uploaded PDF
+    pdf_ids: list[str]    # List of PDF IDs (supports 1-3 PDFs)
     model: Optional[str] = "gpt-4o-mini"  # Optional model selection with default
     api_key: str          # OpenAI API key for authentication
 
@@ -251,7 +251,7 @@ async def upload_pdf_url(request: PDFUrlRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# New endpoint for chatting with PDF using RAG
+# New endpoint for chatting with PDF(s) using RAG
 @app.post("/api/chat-pdf")
 async def chat_pdf(request: PDFChatRequest):
     try:
@@ -260,31 +260,63 @@ async def chat_pdf(request: PDFChatRequest):
         sys.path.append('..')
         from aimakerspace.openai_utils.chatmodel import ChatOpenAI
         
-        # Check if PDF exists
-        if request.pdf_id not in vector_databases:
-            raise HTTPException(status_code=404, detail="PDF not found")
+        # Validate PDF IDs limit (max 3 for research publication analysis)
+        if len(request.pdf_ids) == 0:
+            raise HTTPException(status_code=400, detail="At least one PDF must be selected")
+        if len(request.pdf_ids) > 3:
+            raise HTTPException(status_code=400, detail="Maximum 3 PDFs can be selected for analysis")
         
-        vector_db = vector_databases[request.pdf_id]
+        # Check if all PDFs exist
+        missing_pdfs = [pdf_id for pdf_id in request.pdf_ids if pdf_id not in vector_databases]
+        if missing_pdfs:
+            raise HTTPException(status_code=404, detail=f"PDFs not found: {', '.join(missing_pdfs)}")
         
-        # Search for relevant chunks
-        relevant_chunks = vector_db.search_by_text(
-            request.user_message, 
-            k=5, 
-            return_as_text=True
-        )
+        # Collect relevant chunks from all selected PDFs
+        all_relevant_chunks = []
+        pdf_contexts = {}
         
-        # Create context from relevant chunks
-        context = "\n\n".join(relevant_chunks)
+        for pdf_id in request.pdf_ids:
+            vector_db = vector_databases[pdf_id]
+            pdf_filename = pdf_metadata[pdf_id]["filename"]
+            
+            # Search for relevant chunks in this PDF
+            relevant_chunks = vector_db.search_by_text(
+                request.user_message, 
+                k=5 if len(request.pdf_ids) == 1 else 3,  # Fewer chunks per PDF when using multiple
+                return_as_text=True
+            )
+            
+            # Tag chunks with their source PDF
+            tagged_chunks = [f"[From: {pdf_filename}]\n{chunk}" for chunk in relevant_chunks]
+            all_relevant_chunks.extend(tagged_chunks)
+            pdf_contexts[pdf_id] = pdf_filename
         
-        # Create RAG prompt
-        system_prompt = f"""You are a helpful assistant that answers questions based on the provided context from a PDF document. 
+        # Create context from all relevant chunks
+        context = "\n\n---\n\n".join(all_relevant_chunks)
         
+        # Create RAG prompt for single or multiple documents
+        if len(request.pdf_ids) == 1:
+            pdf_name = pdf_contexts[request.pdf_ids[0]]
+            system_prompt = f"""You are a research assistant specializing in academic publication analysis. Answer questions based on the provided context from the research document: "{pdf_name}".
+
 Use the following context to answer the user's question. If the answer is not in the context, say so clearly.
 
 Context:
 {context}
 
-Please provide accurate and helpful answers based on the context above."""
+Please provide accurate, scholarly answers based on the context above."""
+        else:
+            pdf_names = [pdf_contexts[pdf_id] for pdf_id in request.pdf_ids]
+            system_prompt = f"""You are a research assistant specializing in comparative analysis of academic publications. Answer questions based on the provided context from {len(request.pdf_ids)} research documents: {', '.join(pdf_names)}.
+
+When comparing or analyzing across documents, clearly indicate which document supports each point. Use the [From: filename] tags to identify sources.
+
+Use the following context to answer the user's question. If the answer is not in the context, say so clearly.
+
+Context:
+{context}
+
+Please provide accurate, scholarly answers with proper source attribution based on the context above."""
         
         # Set up OpenAI API key
         os.environ['OPENAI_API_KEY'] = request.api_key

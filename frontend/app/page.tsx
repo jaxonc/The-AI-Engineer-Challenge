@@ -27,7 +27,7 @@ interface ChatRequest {
 
 interface PDFChatRequest {
   user_message: string
-  pdf_id: string
+  pdf_ids: string[]
   model: string
   api_key: string
 }
@@ -59,10 +59,14 @@ export default function Home() {
   // PDF chat state
   const [pdfFormData, setPdfFormData] = useState<PDFChatRequest>({
     user_message: '',
-    pdf_id: '',
+    pdf_ids: [],
     model: 'gpt-4o-mini',
     api_key: ''
   })
+
+  // Multi-PDF selection state
+  const [pdfSelectionMode, setPdfSelectionMode] = useState<'single' | 'multiple'>('single')
+  const [selectedPdfIds, setSelectedPdfIds] = useState<string[]>([])
 
   const [response, setResponse] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -239,8 +243,13 @@ export default function Home() {
   // Handle PDF chat submission
   const handlePDFChat = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!pdfFormData.pdf_id) {
-      setError('Please select a PDF first')
+    if (selectedPdfIds.length === 0) {
+      setError('Please select at least one PDF')
+      return
+    }
+
+    if (selectedPdfIds.length > 3) {
+      setError('Maximum 3 PDFs can be selected for analysis')
       return
     }
 
@@ -248,7 +257,12 @@ export default function Home() {
     setError('')
     setResponse('')
 
-    const requestData = { ...pdfFormData, api_key: apiKey, model }
+    const requestData = { 
+      ...pdfFormData, 
+      pdf_ids: selectedPdfIds,
+      api_key: apiKey, 
+      model 
+    }
 
     try {
       const res = await fetch('/api/chat-pdf', {
@@ -498,25 +512,81 @@ export default function Home() {
                         </div>
                       )}
 
-                      {/* Uploaded PDFs List */}
+                                            {/* PDF Selection for Research Analysis */}
                       {uploadedPDFs.length > 0 && (
                         <div>
                           <label className="terminal-label block mb-2">
-                            select_pdf
+                            research_documents
                           </label>
-                          <select
-                            name="pdf_id"
-                            value={pdfFormData.pdf_id}
-                            onChange={handlePDFInputChange}
-                            className="terminal-input w-full px-4 py-3 rounded-md text-sm"
-                          >
-                            <option value="">Select a PDF...</option>
-                            {uploadedPDFs.map((pdf) => (
-                                                      <option key={pdf.pdf_id} value={pdf.pdf_id}>
-                          {pdf.filename} ({pdf.source === 'url' ? 'URL' : 'File'}, {pdf.num_chunks} chunks)
-                        </option>
-                            ))}
-                          </select>
+                          
+                          {/* Selection Mode Toggle */}
+                          <div className="flex gap-2 mb-3">
+                            <button
+                              type="button"
+                              onClick={() => handleSelectionModeChange('single')}
+                              className={`px-3 py-1 rounded text-xs font-mono ${pdfSelectionMode === 'single' 
+                                ? 'terminal-button-primary' 
+                                : 'border border-gray-500 text-gray-300'}`}
+                            >
+                              single
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectionModeChange('multiple')}
+                              className={`px-3 py-1 rounded text-xs font-mono ${pdfSelectionMode === 'multiple' 
+                                ? 'terminal-button-primary' 
+                                : 'border border-gray-500 text-gray-300'}`}
+                            >
+                              compare (max 3)
+                            </button>
+                          </div>
+
+                          {/* Single PDF Selection */}
+                          {pdfSelectionMode === 'single' && (
+                            <select
+                              value={selectedPdfIds[0] || ''}
+                              onChange={(e) => handleSinglePdfSelection(e.target.value)}
+                              className="terminal-input w-full px-4 py-3 rounded-md text-sm"
+                            >
+                              <option value="">Select a research document...</option>
+                              {uploadedPDFs.map((pdf) => (
+                                <option key={pdf.pdf_id} value={pdf.pdf_id}>
+                                  {pdf.filename} ({pdf.source === 'url' ? 'URL' : 'File'}, {pdf.num_chunks} chunks)
+                                </option>
+                              ))}
+                            </select>
+                          )}
+
+                          {/* Multiple PDF Selection */}
+                          {pdfSelectionMode === 'multiple' && (
+                            <div className="space-y-2">
+                              <div className="text-xs mb-2" style={{ color: 'var(--dracula-comment)' }}>
+                                Select up to 3 research documents for comparative analysis:
+                              </div>
+                              {uploadedPDFs.map((pdf) => (
+                                <label key={pdf.pdf_id} className="flex items-center gap-3 p-2 rounded" style={{ background: 'var(--dracula-current-line)' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedPdfIds.includes(pdf.pdf_id)}
+                                    onChange={(e) => handleMultiplePdfSelection(pdf.pdf_id, e.target.checked)}
+                                    className="rounded"
+                                    style={{ accentColor: 'var(--dracula-purple)' }}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium">{pdf.filename}</div>
+                                    <div className="text-xs" style={{ color: 'var(--dracula-comment)' }}>
+                                      {pdf.source === 'url' ? 'URL' : 'File'} • {pdf.num_chunks} chunks • {pdf.total_characters} chars
+                                    </div>
+                                  </div>
+                                </label>
+                              ))}
+                              {selectedPdfIds.length > 0 && (
+                                <div className="text-xs mt-2" style={{ color: 'var(--dracula-green)' }}>
+                                  ✓ {selectedPdfIds.length} document{selectedPdfIds.length > 1 ? 's' : ''} selected for analysis
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -570,7 +640,9 @@ export default function Home() {
                         name="user_message"
                         value={pdfFormData.user_message}
                         onChange={handlePDFInputChange}
-                        placeholder="Ask a question about the uploaded PDF..."
+                        placeholder={pdfSelectionMode === 'multiple' && selectedPdfIds.length > 1 
+                          ? "Ask questions to analyze or compare the selected research documents..."
+                          : "Ask a question about the selected research document..."}
                         rows={4}
                         className="terminal-input w-full px-4 py-3 rounded-md text-sm resize-y"
                         required
@@ -581,7 +653,7 @@ export default function Home() {
                   {/* Execute Button */}
                   <button
                     type="submit"
-                    disabled={isLoading || !apiKey || (chatMode === 'pdf' && !pdfFormData.pdf_id)}
+                    disabled={isLoading || !apiKey || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
                     className="terminal-button-primary w-full py-3 px-6 rounded-md text-sm font-mono transition-all duration-200 flex items-center justify-center gap-3"
                   >
                     {isLoading ? (
