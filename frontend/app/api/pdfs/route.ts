@@ -2,10 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    // Use relative path for Vercel deployment, fallback to localhost for local dev
-    const apiUrl = process.env.NODE_ENV === 'production' 
-      ? '/api/pdfs'  // Use relative path in production (Vercel)
-      : process.env.FASTAPI_URL || 'http://localhost:8000/api/pdfs'
+    // Construct full URL for server-side fetch in Vercel
+    let apiUrl: string;
+    
+    if (process.env.NODE_ENV === 'production') {
+      // In Vercel, use the deployment URL
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : request.url.split('/api/')[0]; // Fallback to current domain
+      apiUrl = `${baseUrl}/api/pdfs`;
+    } else {
+      // Local development
+      apiUrl = process.env.FASTAPI_URL || 'http://localhost:8000/api/pdfs';
+    }
     
     const response = await fetch(apiUrl, {
       method: 'GET',
