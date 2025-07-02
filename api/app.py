@@ -11,8 +11,6 @@ import tempfile
 import asyncio
 from typing import Optional, Dict, Any
 import json
-import requests
-from urllib.parse import urlparse
 
 # Initialize FastAPI application with a title
 app = FastAPI(title="PDF RAG Chat API")
@@ -45,46 +43,6 @@ class PDFChatRequest(BaseModel):
     model: Optional[str] = "gpt-4o-mini"  # Optional model selection with default
     api_key: str          # OpenAI API key for authentication
 
-# Define the data model for PDF URL uploads
-class PDFUrlRequest(BaseModel):
-    url: str              # URL of the PDF to download
-    api_key: str          # OpenAI API key for authentication
-
-def download_pdf_from_url(url: str) -> str:
-    """Download PDF from URL and save to temporary file. Returns the temp file path."""
-    try:
-        # Validate URL
-        parsed_url = urlparse(url)
-        if not parsed_url.scheme or not parsed_url.netloc:
-            raise ValueError("Invalid URL format")
-        
-        # Download the PDF
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        
-        response = requests.get(url, headers=headers, stream=True, timeout=30)
-        response.raise_for_status()
-        
-        # Check if it's actually a PDF
-        content_type = response.headers.get('content-type', '').lower()
-        if 'application/pdf' not in content_type and not url.lower().endswith('.pdf'):
-            # Try to detect PDF by content
-            first_bytes = response.content[:8]
-            if not first_bytes.startswith(b'%PDF'):
-                raise ValueError("URL does not point to a valid PDF file")
-        
-        # Save to temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-            for chunk in response.iter_content(chunk_size=8192):
-                tmp_file.write(chunk)
-            return tmp_file.name
-            
-    except requests.RequestException as e:
-        raise ValueError(f"Failed to download PDF from URL: {str(e)}")
-    except Exception as e:
-        raise ValueError(f"Error processing PDF URL: {str(e)}")
-
 # Define the main chat endpoint that handles POST requests (original functionality)
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
@@ -96,7 +54,7 @@ async def chat(request: ChatRequest):
         async def generate():
             # Create a streaming chat completion request
             stream = client.chat.completions.create(
-                model=request.model or "gpt-4o-mini",
+                model=request.model,
                 messages=[
                     {"role": "developer", "content": request.developer_message},
                     {"role": "user", "content": request.user_message}
@@ -131,7 +89,7 @@ async def upload_pdf(
         from aimakerspace.openai_utils.embedding import EmbeddingModel
         
         # Validate file type
-        if not file.filename or not file.filename.lower().endswith('.pdf'):
+        if not file.filename.lower().endswith('.pdf'):
             raise HTTPException(status_code=400, detail="Only PDF files are allowed")
         
         # Generate a unique ID for this PDF
@@ -164,7 +122,6 @@ async def upload_pdf(
             vector_databases[pdf_id] = vector_db
             pdf_metadata[pdf_id] = {
                 "filename": file.filename,
-                "source": "file_upload",
                 "num_chunks": len(chunks),
                 "total_characters": sum(len(chunk) for chunk in chunks)
             }
@@ -172,7 +129,6 @@ async def upload_pdf(
             return {
                 "pdf_id": pdf_id,
                 "filename": file.filename,
-                "source": "file_upload",
                 "num_chunks": len(chunks),
                 "message": "PDF uploaded and indexed successfully"
             }
@@ -181,73 +137,6 @@ async def upload_pdf(
             # Clean up temporary file
             os.unlink(tmp_file_path)
     
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# New endpoint for PDF URL upload and indexing
-@app.post("/api/upload-pdf-url")
-async def upload_pdf_url(request: PDFUrlRequest):
-    try:
-        # Import aimakerspace modules only when needed
-        import sys
-        sys.path.append('..')
-        from aimakerspace.text_utils import PDFLoader, CharacterTextSplitter
-        from aimakerspace.vectordatabase import VectorDatabase
-        from aimakerspace.openai_utils.embedding import EmbeddingModel
-        
-        # Generate a unique ID for this PDF
-        pdf_id = f"pdf_{len(vector_databases)}"
-        
-        # Download PDF from URL
-        tmp_file_path = download_pdf_from_url(request.url)
-        
-        try:
-            # Load and process the PDF
-            pdf_loader = PDFLoader(tmp_file_path)
-            documents = pdf_loader.load_documents()
-            
-            # Split the documents into chunks
-            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-            chunks = text_splitter.split_texts(documents)
-            
-            # Create embeddings and vector database
-            os.environ['OPENAI_API_KEY'] = request.api_key
-            embedding_model = EmbeddingModel()
-            vector_db = VectorDatabase(embedding_model)
-            
-            # Build vector database from chunks
-            vector_db = await vector_db.abuild_from_list(chunks)
-            
-            # Extract filename from URL
-            filename = os.path.basename(urlparse(request.url).path) or "pdf_from_url.pdf"
-            if not filename.endswith('.pdf'):
-                filename += '.pdf'
-            
-            # Store the vector database and metadata
-            vector_databases[pdf_id] = vector_db
-            pdf_metadata[pdf_id] = {
-                "filename": filename,
-                "source": "url",
-                "url": request.url,
-                "num_chunks": len(chunks),
-                "total_characters": sum(len(chunk) for chunk in chunks)
-            }
-            
-            return {
-                "pdf_id": pdf_id,
-                "filename": filename,
-                "source": "url",
-                "url": request.url,
-                "num_chunks": len(chunks),
-                "message": "PDF downloaded and indexed successfully"
-            }
-            
-        finally:
-            # Clean up temporary file
-            os.unlink(tmp_file_path)
-    
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -288,7 +177,7 @@ Please provide accurate and helpful answers based on the context above."""
         
         # Set up OpenAI API key
         os.environ['OPENAI_API_KEY'] = request.api_key
-        chat_model = ChatOpenAI(model_name=request.model or "gpt-4o-mini")
+        chat_model = ChatOpenAI(model_name=request.model)
         
         # Create messages for chat
         messages = [
@@ -316,8 +205,6 @@ async def list_pdfs():
                 {
                     "pdf_id": pdf_id,
                     "filename": metadata["filename"],
-                    "source": metadata.get("source", "unknown"),
-                    "url": metadata.get("url", None),
                     "num_chunks": metadata["num_chunks"],
                     "total_characters": metadata["total_characters"]
                 }
