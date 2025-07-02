@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
+    // Detect if we're in build/export mode and return placeholder response
+    if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_URL) {
+      // During build/export, return placeholder response
+      return NextResponse.json({
+        error: 'Service not available during build'
+      }, { status: 503 })
+    }
+    
     const body = await request.json()
     
     // Construct full URL for server-side fetch in Vercel
