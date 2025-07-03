@@ -1,22 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
-import SyntaxHighlighter from 'react-syntax-highlighter/dist/esm/prism-light'
-import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import js from 'react-syntax-highlighter/dist/esm/languages/prism/javascript'
-import ts from 'react-syntax-highlighter/dist/esm/languages/prism/typescript'
-import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
-import json from 'react-syntax-highlighter/dist/esm/languages/prism/json'
-
-// Register languages for Prism
-SyntaxHighlighter.registerLanguage('javascript', js)
-SyntaxHighlighter.registerLanguage('js', js)
-SyntaxHighlighter.registerLanguage('typescript', ts)
-SyntaxHighlighter.registerLanguage('ts', ts)
-SyntaxHighlighter.registerLanguage('python', python)
-SyntaxHighlighter.registerLanguage('py', python)
-SyntaxHighlighter.registerLanguage('json', json)
 
 interface ChatRequest {
   developer_message: string
@@ -92,6 +77,11 @@ export default function Home() {
       console.error('Failed to fetch PDFs:', err)
     }
   }
+
+  // Initialize PDFs on component mount
+  useEffect(() => {
+    fetchPDFs()
+  }, [])
 
   // Handle PDF upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,7 +192,11 @@ export default function Home() {
     setError('')
     setResponse('')
 
-    const requestData = { ...regularFormData, api_key: apiKey, model }
+    const requestData = {
+      ...regularFormData,
+      api_key: apiKey,
+      model
+    }
 
     try {
       const res = await fetch('/api/chat', {
@@ -214,24 +208,21 @@ export default function Home() {
       })
 
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`)
+        const errorData = await res.json()
+        throw new Error(errorData.detail || 'Request failed')
       }
 
       const reader = res.body?.getReader()
-      if (!reader) {
-        throw new Error('No reader available')
-      }
-
-      const decoder = new TextDecoder()
-      let currentResponse = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value, { stream: true })
-        currentResponse += chunk
-        setResponse(currentResponse)
+      if (reader) {
+        let accumulatedResponse = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          
+          const chunk = new TextDecoder().decode(value)
+          accumulatedResponse += chunk
+          setResponse(accumulatedResponse)
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -243,8 +234,9 @@ export default function Home() {
   // Handle PDF chat submission
   const handlePDFChat = async (e: React.FormEvent) => {
     e.preventDefault()
+    
     if (selectedPdfIds.length === 0) {
-      setError('Please select at least one PDF')
+      setError('Please select at least one PDF for analysis')
       return
     }
 
@@ -257,11 +249,11 @@ export default function Home() {
     setError('')
     setResponse('')
 
-    const requestData = { 
-      ...pdfFormData, 
+    const requestData = {
+      ...pdfFormData,
       pdf_ids: selectedPdfIds,
-      api_key: apiKey, 
-      model 
+      api_key: apiKey,
+      model
     }
 
     try {
@@ -274,24 +266,21 @@ export default function Home() {
       })
 
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`)
+        const errorData = await res.json()
+        throw new Error(errorData.detail || 'Request failed')
       }
 
       const reader = res.body?.getReader()
-      if (!reader) {
-        throw new Error('No reader available')
-      }
-
-      const decoder = new TextDecoder()
-      let currentResponse = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value, { stream: true })
-        currentResponse += chunk
-        setResponse(currentResponse)
+      if (reader) {
+        let accumulatedResponse = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          
+          const chunk = new TextDecoder().decode(value)
+          accumulatedResponse += chunk
+          setResponse(accumulatedResponse)
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -300,6 +289,7 @@ export default function Home() {
     }
   }
 
+  // Handle regular input changes
   const handleRegularInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -310,11 +300,15 @@ export default function Home() {
     }))
   }
 
+  // Handle PDF input changes
   const handlePDFInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target
-    setPdfFormData(prev => ({ ...prev, [name]: value }))
+    setPdfFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
   }
 
   // Handle single PDF selection
@@ -343,490 +337,353 @@ export default function Home() {
     setError('')
   }
 
-  // Initialize PDFs on component mount
-  useEffect(() => {
-    fetchPDFs()
-  }, [])
-
   return (
-    <div className="min-h-screen p-4" style={{ background: 'var(--dracula-bg)' }}>
-      <div className="max-w-7xl mx-auto">
-        {/* Terminal Window */}
-        <div className="terminal-window">
-          {/* Terminal Header */}
-          <div className="terminal-header">
-            <div className="terminal-controls">
-              <button className="terminal-button close"></button>
-              <button className="terminal-button minimize"></button>
-              <button className="terminal-button maximize"></button>
-            </div>
-            <div className="terminal-title">
-              pdf-rag-chat — zsh — 120×40
-            </div>
-          </div>
-
-          {/* Terminal Content */}
-          <div className="p-6">
-            {/* Welcome Header */}
-            <div className="mb-8">
-              <div className="text-2xl font-bold mb-2" style={{ color: 'var(--dracula-purple)' }}>
-                <span style={{ color: 'var(--dracula-green)' }}>❯</span> PDF RAG Chat Terminal
-              </div>
-              <div className="text-sm" style={{ color: 'var(--dracula-comment)' }}>
-                // Chat with AI or upload PDFs and ask questions about their content
-              </div>
-            </div>
-
-            {/* Mode Selection */}
-            <div className="mb-6">
-              <div className="terminal-prompt text-sm mb-3">
-                mode_selection
-              </div>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setChatMode('regular')}
-                  className={`px-4 py-2 rounded-md text-sm font-mono transition-all ${
-                    chatMode === 'regular'
-                      ? 'terminal-button-primary'
-                      : 'terminal-button-secondary'
-                  }`}
-                >
-                  Regular Chat
-                </button>
-                <button
-                  onClick={() => setChatMode('pdf')}
-                  className={`px-4 py-2 rounded-md text-sm font-mono transition-all ${
-                    chatMode === 'pdf'
-                      ? 'terminal-button-primary'
-                      : 'terminal-button-secondary'
-                  }`}
-                >
-                  PDF Chat (RAG)
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {/* Configuration Panel */}
-              <div>
-                <div className="mb-4">
-                  <div className="terminal-prompt text-sm">
-                    config
-                  </div>
-                </div>
-
-                {/* Global Settings */}
-                <div className="space-y-4 mb-6">
-                  {/* API Key */}
-                  <div>
-                    <label className="terminal-label block mb-2">
-                      api_key
-                    </label>
-                    <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="sk-..."
-                      className="terminal-input w-full px-4 py-3 rounded-md text-sm"
-                      required
-                    />
-                  </div>
-
-                  {/* Model Selection */}
-                  <div>
-                    <label className="terminal-label block mb-2">
-                      model
-                    </label>
-                    <select
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      className="terminal-input w-full px-4 py-3 rounded-md text-sm"
-                    >
-                      <option value="gpt-4o-mini">gpt-4o-mini</option>
-                      <option value="gpt-4o">gpt-4o</option>
-                      <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* PDF Upload Section (shown in PDF mode) */}
-                {chatMode === 'pdf' && (
-                  <div className="mb-6 p-4 rounded-md" style={{ background: 'var(--dracula-current-line)' }}>
-                    <div className="terminal-prompt text-sm mb-3">
-                      pdf_upload
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <label className="terminal-label block mb-2">
-                          upload_method
-                        </label>
-                        <div className="flex gap-2 mb-3">
-                          <button
-                            type="button"
-                            onClick={() => setUploadType('file')}
-                            className={`px-3 py-1 rounded text-xs font-mono ${uploadType === 'file' 
-                              ? 'terminal-button-primary' 
-                              : 'border border-gray-500 text-gray-300'}`}
-                          >
-                            file
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setUploadType('url')}
-                            className={`px-3 py-1 rounded text-xs font-mono ${uploadType === 'url' 
-                              ? 'terminal-button-primary' 
-                              : 'border border-gray-500 text-gray-300'}`}
-                          >
-                            url
-                          </button>
-                        </div>
-
-                        {uploadType === 'file' ? (
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".pdf"
-                            onChange={handleFileUpload}
-                            disabled={isUploading || !apiKey}
-                            className="terminal-input w-full px-4 py-3 rounded-md text-sm"
-                          />
-                        ) : (
-                          <div className="flex gap-2">
-                            <input
-                              type="url"
-                              placeholder="https://example.com/document.pdf"
-                              value={pdfUrl}
-                              onChange={(e) => setPdfUrl(e.target.value)}
-                              disabled={isUploading || !apiKey}
-                              className="terminal-input flex-1 px-4 py-3 rounded-md text-sm"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleUrlUpload}
-                              disabled={isUploading || !pdfUrl.trim() || !apiKey}
-                              className="terminal-button-primary px-4 py-3 rounded-md text-sm font-mono disabled:opacity-50"
-                            >
-                              upload
-                            </button>
-                          </div>
-                        )}
-
-                        {!apiKey && (
-                          <div className="text-xs mt-1" style={{ color: 'var(--dracula-orange)' }}>
-                            Enter API key first
-                          </div>
-                        )}
-                      </div>
-
-                      {(isUploading || uploadProgress) && (
-                        <div className="text-sm" style={{ color: 'var(--dracula-cyan)' }}>
-                          {isUploading && (
-                            <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                              {uploadProgress}
-                            </div>
-                          )}
-                          {!isUploading && uploadProgress && (
-                            <div style={{ color: 'var(--dracula-green)' }}>
-                              ✓ {uploadProgress}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                                            {/* PDF Selection for Research Analysis */}
-                      {uploadedPDFs.length > 0 && (
-                        <div>
-                          <label className="terminal-label block mb-2">
-                            research_documents
-                          </label>
-                          
-                          {/* Selection Mode Toggle */}
-                          <div className="flex gap-2 mb-3">
-                            <button
-                              type="button"
-                              onClick={() => handleSelectionModeChange('single')}
-                              className={`px-3 py-1 rounded text-xs font-mono ${pdfSelectionMode === 'single' 
-                                ? 'terminal-button-primary' 
-                                : 'border border-gray-500 text-gray-300'}`}
-                            >
-                              single
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSelectionModeChange('multiple')}
-                              className={`px-3 py-1 rounded text-xs font-mono ${pdfSelectionMode === 'multiple' 
-                                ? 'terminal-button-primary' 
-                                : 'border border-gray-500 text-gray-300'}`}
-                            >
-                              compare (max 3)
-                            </button>
-                          </div>
-
-                          {/* Single PDF Selection */}
-                          {pdfSelectionMode === 'single' && (
-                            <select
-                              value={selectedPdfIds[0] || ''}
-                              onChange={(e) => handleSinglePdfSelection(e.target.value)}
-                              className="terminal-input w-full px-4 py-3 rounded-md text-sm"
-                            >
-                              <option value="">Select a research document...</option>
-                              {uploadedPDFs.map((pdf) => (
-                                <option key={pdf.pdf_id} value={pdf.pdf_id}>
-                                  {pdf.filename} ({pdf.source === 'url' ? 'URL' : 'File'}, {pdf.num_chunks} chunks)
-                                </option>
-                              ))}
-                            </select>
-                          )}
-
-                          {/* Multiple PDF Selection */}
-                          {pdfSelectionMode === 'multiple' && (
-                            <div className="space-y-2">
-                              <div className="text-xs mb-2" style={{ color: 'var(--dracula-comment)' }}>
-                                Select up to 3 research documents for comparative analysis:
-                              </div>
-                              {uploadedPDFs.map((pdf) => (
-                                <label key={pdf.pdf_id} className="flex items-center gap-3 p-2 rounded" style={{ background: 'var(--dracula-current-line)' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedPdfIds.includes(pdf.pdf_id)}
-                                    onChange={(e) => handleMultiplePdfSelection(pdf.pdf_id, e.target.checked)}
-                                    className="rounded"
-                                    style={{ accentColor: 'var(--dracula-purple)' }}
-                                  />
-                                  <div className="flex-1">
-                                    <div className="text-sm font-medium">{pdf.filename}</div>
-                                    <div className="text-xs" style={{ color: 'var(--dracula-comment)' }}>
-                                      {pdf.source === 'url' ? 'URL' : 'File'} • {pdf.num_chunks} chunks • {pdf.total_characters} chars
-                                    </div>
-                                  </div>
-                                </label>
-                              ))}
-                              {selectedPdfIds.length > 0 && (
-                                <div className="text-xs mt-2" style={{ color: 'var(--dracula-green)' }}>
-                                  ✓ {selectedPdfIds.length} document{selectedPdfIds.length > 1 ? 's' : ''} selected for analysis
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Chat Form */}
-                <form onSubmit={chatMode === 'regular' ? handleRegularChat : handlePDFChat} className="space-y-6">
-                  {chatMode === 'regular' && (
-                    <>
-                      {/* System Prompt */}
-                      <div>
-                        <label className="terminal-label block mb-2">
-                          system_prompt
-                        </label>
-                        <textarea
-                          name="developer_message"
-                          value={regularFormData.developer_message}
-                          onChange={handleRegularInputChange}
-                          placeholder="You are a helpful assistant..."
-                          rows={3}
-                          className="terminal-input w-full px-4 py-3 rounded-md text-sm resize-y"
-                          required
-                        />
-                      </div>
-
-                      {/* User Input */}
-                      <div>
-                        <label className="terminal-label block mb-2">
-                          user_input
-                        </label>
-                        <textarea
-                          name="user_message"
-                          value={regularFormData.user_message}
-                          onChange={handleRegularInputChange}
-                          placeholder="Enter your message here..."
-                          rows={4}
-                          className="terminal-input w-full px-4 py-3 rounded-md text-sm resize-y"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {chatMode === 'pdf' && (
-                    <div>
-                      <label className="terminal-label block mb-2">
-                        pdf_question
-                      </label>
-                      <textarea
-                        name="user_message"
-                        value={pdfFormData.user_message}
-                        onChange={handlePDFInputChange}
-                        placeholder={pdfSelectionMode === 'multiple' && selectedPdfIds.length > 1 
-                          ? "Ask questions to analyze or compare the selected research documents..."
-                          : "Ask a question about the selected research document..."}
-                        rows={4}
-                        className="terminal-input w-full px-4 py-3 rounded-md text-sm resize-y"
-                        required
-                      />
-                    </div>
-                  )}
-
-                  {/* Execute Button */}
-                  <button
-                    type="submit"
-                    disabled={isLoading || !apiKey || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
-                    className="terminal-button-primary w-full py-3 px-6 rounded-md text-sm font-mono transition-all duration-200 flex items-center justify-center gap-3"
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="terminal-loading">
-                          {chatMode === 'pdf' ? 'searching_pdf' : 'executing'}
-                        </div>
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ color: 'var(--dracula-green)' }}>▶</span>
-                        {chatMode === 'pdf' ? 'ask_pdf' : 'execute_query'}
-                      </>
-                    )}
-                  </button>
-                </form>
-              </div>
-
-              {/* Output Panel */}
-              <div>
-                <div className="mb-4">
-                  <div className="terminal-prompt text-sm">
-                    output
-                  </div>
-                </div>
-                
-                <div className="terminal-output rounded-md p-4 min-h-[500px] max-h-[600px] overflow-y-auto">
-                  {error && (
-                    <div className="terminal-error p-4 rounded-md mb-4 text-sm">
-                      <div className="font-bold mb-1">ERROR:</div>
-                      <div className="font-mono">{error}</div>
-                    </div>
-                  )}
-                  
-                  {response && (
-                    <div className="space-y-2">
-                      <div className="text-xs mb-2" style={{ color: 'var(--dracula-comment)' }}>
-                        // {chatMode === 'pdf' ? 'PDF RAG Response Stream' : 'AI Response Stream'}
-                      </div>
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: 'var(--dracula-foreground)' }}>
-                        <ReactMarkdown
-                          components={{
-                            h1: ({node, ...props}) => <h1 style={{color: 'var(--dracula-pink)', fontWeight: 700, fontSize: '1.5em', margin: '1em 0 0.5em'}} {...props} />,
-                            h2: ({node, ...props}) => <h2 style={{color: 'var(--dracula-purple)', fontWeight: 700, fontSize: '1.2em', margin: '1em 0 0.5em'}} {...props} />,
-                            h3: ({node, ...props}) => <h3 style={{color: 'var(--dracula-cyan)', fontWeight: 700, fontSize: '1em', margin: '1em 0 0.5em'}} {...props} />,
-                            code({node, ...props}: any) {
-                              const {inline, className, children, ...rest} = props;
-                              const match = /language-(\w+)/.exec(className || '');
-                              if (!inline && match) {
-                                return (
-                                  <SyntaxHighlighter
-                                    style={dracula}
-                                    language={match[1]}
-                                    PreTag="div"
-                                    customStyle={{
-                                      borderRadius: 8,
-                                      margin: '0.5em 0',
-                                      fontSize: '0.95em',
-                                      background: 'var(--dracula-current-line)',
-                                    }}
-                                    {...rest}
-                                  >
-                                    {String(children).replace(/\n$/, '')}
-                                  </SyntaxHighlighter>
-                                );
-                              } else {
-                                return (
-                                  <code
-                                    className={className}
-                                    style={{
-                                      background: 'var(--dracula-current-line)',
-                                      color: 'var(--dracula-green)',
-                                      borderRadius: 4,
-                                      padding: '2px 6px',
-                                      fontSize: '0.95em',
-                                    }}
-                                    {...rest}
-                                  >{children}</code>
-                                );
-                              }
-                            },
-                            blockquote: ({node, ...props}) =>
-                              <blockquote style={{borderLeft: '4px solid var(--dracula-purple)', background: 'rgba(189,147,249,0.08)', color: 'var(--dracula-comment)', padding: '0.5em 1em', margin: '1em 0'}} {...props} />,
-                            a: ({node, ...props}) => <a style={{color: 'var(--dracula-cyan)', textDecoration: 'underline'}} {...props} />,
-                            ul: ({node, ...props}) => <ul style={{marginLeft: '1.5em', listStyle: 'disc'}} {...props} />,
-                            ol: ({node, ...props}) => <ol style={{marginLeft: '1.5em', listStyle: 'decimal'}} {...props} />,
-                            li: ({node, ...props}) => <li style={{margin: '0.25em 0'}} {...props} />,
-                            strong: ({node, ...props}) => <strong style={{color: 'var(--dracula-yellow)'}} {...props} />,
-                            em: ({node, ...props}) => <em style={{color: 'var(--dracula-orange)'}} {...props} />,
-                            hr: ({node, ...props}) => <hr style={{borderColor: 'var(--dracula-comment)', margin: '1em 0'}} {...props} />,
-                            p: ({node, ...props}) => <p style={{margin: '0.5em 0'}} {...props} />,
-                          }}
-                        >
-                          {response}
-                        </ReactMarkdown>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!response && !error && !isLoading && (
-                    <div className="text-center py-12" style={{ color: 'var(--dracula-comment)' }}>
-                      <div className="text-lg mb-2">
-                        <span style={{ color: 'var(--dracula-cyan)' }}>◉</span> Ready for {chatMode === 'pdf' ? 'PDF questions' : 'input'}
-                      </div>
-                      <div className="text-sm">
-                        {chatMode === 'pdf' 
-                          ? 'Upload a PDF and ask questions about its content using RAG.'
-                          : 'Configure your settings and execute a query to see the AI response stream here.'
-                        }
-                      </div>
-                    </div>
-                  )}
-                  
-                  {isLoading && !response && (
-                    <div className="text-center py-12">
-                      <div className="flex items-center justify-center gap-3 mb-4">
-                        <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ color: 'var(--dracula-cyan)' }}></div>
-                        <div className="terminal-loading text-lg">
-                          {chatMode === 'pdf' ? 'searching pdf content' : 'awaiting response'}
-                        </div>
-                      </div>
-                      <div className="text-sm" style={{ color: 'var(--dracula-comment)' }}>
-                        // {chatMode === 'pdf' ? 'Retrieving relevant content and generating response...' : 'Streaming data from OpenAI API...'}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Cursor for terminal feel */}
-                  {(response || isLoading) && (
-                    <div className="inline-block w-2 h-4 ml-1 animate-pulse" style={{ background: 'var(--dracula-green)' }}></div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Terminal Footer */}
-            <div className="mt-8 pt-4 border-t" style={{ borderColor: 'var(--dracula-current-line)' }}>
-              <div className="flex items-center justify-between text-xs" style={{ color: 'var(--dracula-comment)' }}>
-                <div>
-                  <span style={{ color: 'var(--dracula-green)' }}>●</span> Connected to PDF RAG Backend
-                </div>
-                <div>
-                  Built with aimakerspace + Next.js + FastAPI
-                </div>
-              </div>
-            </div>
-          </div>
+    <div>
+      {/* Header */}
+      <header className="apple-header">
+        <div className="space-particle"></div>
+        <div className="space-particle"></div>
+        <div className="space-particle"></div>
+        <div className="space-particle"></div>
+        <div className="space-particle"></div>
+        <div className="apple-container apple-header-content">
+          <h1 className="apple-title">Research Publication Assistant</h1>
+          <p className="apple-subtitle">
+            Chat with AI models and analyze research papers with advanced RAG capabilities
+          </p>
         </div>
-      </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="apple-main">
+        <div className="apple-container">
+          {/* Configuration Section */}
+          <section className="apple-section">
+            <h2 className="apple-section-title">Configuration</h2>
+            <div className="apple-grid-2">
+              <div>
+                <label className="apple-label">OpenAI API Key</label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Enter your OpenAI API key"
+                  className="apple-input"
+                />
+              </div>
+              <div>
+                <label className="apple-label">Model</label>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="apple-select"
+                >
+                  <option value="gpt-4o-mini">GPT-4o Mini</option>
+                  <option value="gpt-4o">GPT-4o</option>
+                  <option value="gpt-4">GPT-4</option>
+                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          {/* Mode Selection */}
+          <section className="apple-section">
+            <h2 className="apple-section-title">Choose Your Mode</h2>
+            <div className="apple-mode-toggle">
+              <button
+                onClick={() => setChatMode('regular')}
+                className={`apple-mode-button ${chatMode === 'regular' ? 'active' : ''}`}
+              >
+                General Chat
+              </button>
+              <button
+                onClick={() => setChatMode('pdf')}
+                className={`apple-mode-button ${chatMode === 'pdf' ? 'active' : ''}`}
+              >
+                Research Analysis
+              </button>
+            </div>
+          </section>
+
+          {/* PDF Upload Section */}
+          {chatMode === 'pdf' && (
+            <section className="apple-section">
+              <h2 className="apple-section-title">Upload Research Documents</h2>
+              
+              {/* Upload Type Toggle */}
+              <div className="apple-mode-toggle" style={{ marginBottom: '1.5rem' }}>
+                <button
+                  onClick={() => setUploadType('file')}
+                  className={`apple-mode-button ${uploadType === 'file' ? 'active' : ''}`}
+                >
+                  Upload File
+                </button>
+                <button
+                  onClick={() => setUploadType('url')}
+                  className={`apple-mode-button ${uploadType === 'url' ? 'active' : ''}`}
+                >
+                  From URL
+                </button>
+              </div>
+
+              {/* File Upload */}
+              {uploadType === 'file' && (
+                <div className="apple-upload-area" onClick={() => fileInputRef.current?.click()}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                  />
+                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📄</div>
+                  <div style={{ fontSize: '1.125rem', fontWeight: '500', marginBottom: '0.25rem' }}>
+                    Click to upload PDF
+                  </div>
+                  <div className="apple-caption">
+                    Select a research paper or academic document (PDF format only)
+                  </div>
+                </div>
+              )}
+
+              {/* URL Upload */}
+              {uploadType === 'url' && (
+                <div>
+                  <label className="apple-label">PDF URL</label>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <input
+                      type="url"
+                      value={pdfUrl}
+                      onChange={(e) => setPdfUrl(e.target.value)}
+                      placeholder="https://example.com/research-paper.pdf"
+                      className="apple-input"
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      onClick={handleUrlUpload}
+                      disabled={isUploading || !pdfUrl.trim()}
+                      className="apple-button apple-button-primary"
+                      style={{ whiteSpace: 'nowrap' }}
+                    >
+                      {isUploading ? 'Uploading...' : 'Upload'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload Progress */}
+              {uploadProgress && (
+                <div className="apple-success">
+                  {uploadProgress}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* PDF Selection Section */}
+          {chatMode === 'pdf' && uploadedPDFs.length > 0 && (
+            <section className="apple-section">
+              <h2 className="apple-section-title">Select Research Documents</h2>
+              <p className="apple-caption" style={{ marginBottom: '1.5rem' }}>
+                Choose up to 3 research documents for analysis and comparison
+              </p>
+              
+              {/* Selection Mode Toggle */}
+              <div className="apple-mode-toggle" style={{ marginBottom: '1.5rem' }}>
+                <button
+                  onClick={() => handleSelectionModeChange('single')}
+                  className={`apple-mode-button ${pdfSelectionMode === 'single' ? 'active' : ''}`}
+                >
+                  Single Document
+                </button>
+                <button
+                  onClick={() => handleSelectionModeChange('multiple')}
+                  className={`apple-mode-button ${pdfSelectionMode === 'multiple' ? 'active' : ''}`}
+                >
+                  Compare Documents
+                </button>
+              </div>
+
+              {/* Single PDF Selection */}
+              {pdfSelectionMode === 'single' && (
+                <div>
+                  <label className="apple-label">Select Document</label>
+                  <select
+                    value={selectedPdfIds[0] || ''}
+                    onChange={(e) => handleSinglePdfSelection(e.target.value)}
+                    className="apple-select"
+                  >
+                    <option value="">Choose a research document...</option>
+                    {uploadedPDFs.map((pdf) => (
+                      <option key={pdf.pdf_id} value={pdf.pdf_id}>
+                        {pdf.filename} ({pdf.source === 'url' ? 'URL' : 'File'} • {pdf.num_chunks} sections)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Multiple PDF Selection */}
+              {pdfSelectionMode === 'multiple' && (
+                <div className="apple-pdf-grid">
+                  {uploadedPDFs.map((pdf) => (
+                    <div
+                      key={pdf.pdf_id}
+                      className={`apple-pdf-item ${selectedPdfIds.includes(pdf.pdf_id) ? 'selected' : ''}`}
+                      onClick={() => handleMultiplePdfSelection(pdf.pdf_id, !selectedPdfIds.includes(pdf.pdf_id))}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPdfIds.includes(pdf.pdf_id)}
+                        onChange={(e) => handleMultiplePdfSelection(pdf.pdf_id, e.target.checked)}
+                        className="apple-checkbox"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="apple-pdf-info">
+                        <div className="apple-pdf-title">{pdf.filename}</div>
+                        <div className="apple-pdf-meta">
+                          {pdf.source === 'url' ? 'From URL' : 'Uploaded File'} • {pdf.num_chunks} sections • {pdf.total_characters.toLocaleString()} characters
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {selectedPdfIds.length > 0 && (
+                    <div className="apple-success">
+                      ✓ {selectedPdfIds.length} document{selectedPdfIds.length > 1 ? 's' : ''} selected for analysis
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Chat Section */}
+          <section className="apple-section">
+            <h2 className="apple-section-title">
+              {chatMode === 'regular' ? 'Chat with AI' : 'Research Analysis'}
+            </h2>
+            
+            <form onSubmit={chatMode === 'regular' ? handleRegularChat : handlePDFChat}>
+              {chatMode === 'regular' && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="apple-label">Developer Message (Optional)</label>
+                  <textarea
+                    name="developer_message"
+                    value={regularFormData.developer_message}
+                    onChange={handleRegularInputChange}
+                    placeholder="Enter instructions or context for the AI..."
+                    className="apple-textarea"
+                    rows={3}
+                  />
+                </div>
+              )}
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label className="apple-label">
+                  {chatMode === 'regular' ? 'Your Message' : 'Your Question'}
+                </label>
+                <textarea
+                  name="user_message"
+                  value={chatMode === 'regular' ? regularFormData.user_message : pdfFormData.user_message}
+                  onChange={chatMode === 'regular' ? handleRegularInputChange : handlePDFInputChange}
+                  placeholder={
+                    chatMode === 'regular' 
+                      ? "Ask me anything..."
+                      : pdfSelectionMode === 'multiple' && selectedPdfIds.length > 1 
+                        ? "Ask questions to analyze or compare the selected research documents..."
+                        : "Ask a question about the selected research document..."
+                  }
+                  className="apple-textarea"
+                  rows={4}
+                />
+              </div>
+
+              {error && (
+                <div className="apple-error">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading || !apiKey || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
+                className="apple-button apple-button-primary"
+                style={{ width: '100%' }}
+              >
+                {isLoading ? (
+                  <div className="apple-loading">
+                    <div className="apple-spin" style={{ width: '1rem', height: '1rem', border: '2px solid #ffffff40', borderTop: '2px solid #ffffff', borderRadius: '50%' }}></div>
+                    {chatMode === 'regular' ? 'Thinking...' : 'Analyzing...'}
+                  </div>
+                ) : (
+                  <>
+                    {chatMode === 'regular' ? '💬 Send Message' : '🔍 Analyze Documents'}
+                  </>
+                )}
+              </button>
+            </form>
+          </section>
+
+          {/* Response Section */}
+          {response && (
+            <section className="apple-response apple-fade-in">
+              <h3 className="apple-section-title" style={{ marginBottom: '1.5rem' }}>Response</h3>
+              <ReactMarkdown
+                components={{
+                  code({ className, children, ...props }) {
+                    const isCodeBlock = className?.includes('language-')
+                    
+                    return isCodeBlock ? (
+                      <pre style={{ 
+                        background: 'var(--apple-surface)', 
+                        padding: '1.5rem', 
+                        borderRadius: '12px', 
+                        overflow: 'auto',
+                        border: '1px solid var(--apple-border)',
+                        fontSize: '0.875rem',
+                        lineHeight: '1.6',
+                        fontFamily: 'Monaco, Menlo, "SF Mono", Consolas, "Liberation Mono", "Courier New", monospace'
+                      }}>
+                        <code 
+                          className={className} 
+                          style={{ 
+                            background: 'transparent',
+                            padding: '0',
+                            border: 'none',
+                            borderRadius: '0'
+                          }}
+                          {...props}
+                        >
+                          {children}
+                        </code>
+                      </pre>
+                    ) : (
+                      <code 
+                        className={className} 
+                        style={{
+                          background: 'var(--apple-surface)',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '6px',
+                          border: '1px solid var(--apple-border)',
+                          fontSize: '0.875rem',
+                          fontFamily: 'Monaco, Menlo, "SF Mono", Consolas, "Liberation Mono", "Courier New", monospace'
+                        }}
+                        {...props}
+                      >
+                        {children}
+                      </code>
+                    )
+                  }
+                }}
+              >
+                {response}
+              </ReactMarkdown>
+            </section>
+          )}
+        </div>
+      </main>
     </div>
   )
 } 
