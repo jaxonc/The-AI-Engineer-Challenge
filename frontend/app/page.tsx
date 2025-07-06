@@ -209,7 +209,7 @@ export default function Home() {
           } catch (jsonParseError) {
             // Handle non-JSON responses (e.g., HTML error pages from Vercel)
             if (responseText.includes('Request Entity Too Large') || res.status === 413) {
-              errorMessage = 'File too large. Please upload a smaller PDF (max 4.5MB - Vercel limit)'
+              errorMessage = 'PDF file too large for processing. Try a smaller PDF or contact support.'
             } else if (responseText.includes('Bad Request') || res.status === 400) {
               errorMessage = 'Invalid PDF URL or file format'
             } else {
@@ -536,7 +536,7 @@ export default function Home() {
                       type="url"
                       value={pdfUrl}
                       onChange={(e) => setPdfUrl(e.target.value)}
-                      placeholder="https://example.com/research-paper.pdf (max 4.5MB)"
+                      placeholder="https://example.com/research-paper.pdf (up to ~50MB)"
                       className="apple-input"
                       style={{ flex: 1 }}
                     />
@@ -558,6 +558,10 @@ export default function Home() {
                   {uploadProgress}
                 </div>
               )}
+
+              <p className="apple-caption" style={{ marginBottom: '1.5rem' }}>
+                URL uploads can handle much larger files than direct uploads since they bypass Vercel's request body limits. Practical limit: ~50-100MB depending on processing complexity.
+              </p>
             </section>
           )}
 
