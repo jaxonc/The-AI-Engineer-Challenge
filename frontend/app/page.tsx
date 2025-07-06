@@ -20,6 +20,7 @@ interface PDFChatRequest {
 interface UploadedPDF {
   pdf_id: string
   filename: string
+  paper_title?: string
   source?: string
   url?: string
   num_chunks: number
@@ -601,7 +602,7 @@ export default function Home() {
                     <option value="">Choose a research document...</option>
                     {uploadedPDFs.map((pdf) => (
                       <option key={pdf.pdf_id} value={pdf.pdf_id}>
-                        {pdf.filename} ({pdf.source === 'url' ? 'URL' : 'File'} • {pdf.num_chunks} sections)
+                        {pdf.paper_title ? `${pdf.paper_title} (${pdf.filename})` : pdf.filename} ({pdf.source === 'url' ? 'URL' : 'File'} • {pdf.num_chunks} sections)
                       </option>
                     ))}
                   </select>
@@ -625,7 +626,14 @@ export default function Home() {
                         onClick={(e) => e.stopPropagation()}
                       />
                       <div className="apple-pdf-info">
-                        <div className="apple-pdf-title">{pdf.filename}</div>
+                        <div className="apple-pdf-title">
+                          {pdf.paper_title ? pdf.paper_title : pdf.filename}
+                        </div>
+                        {pdf.paper_title && (
+                          <div className="apple-pdf-filename">
+                            {pdf.filename}
+                          </div>
+                        )}
                         <div className="apple-pdf-meta">
                           {pdf.source === 'url' ? 'From URL' : 'Uploaded File'} • {pdf.num_chunks} sections • {pdf.total_characters.toLocaleString()} characters
                         </div>

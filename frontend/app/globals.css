@@ -452,6 +452,13 @@ body {
   margin-bottom: 0.25rem;
 }
 
+.apple-pdf-filename {
+  font-size: 0.875rem;
+  color: var(--apple-secondary);
+  font-style: italic;
+  margin-bottom: 0.25rem;
+}
+
 .apple-pdf-meta {
   font-size: 0.875rem;
   color: var(--apple-secondary);

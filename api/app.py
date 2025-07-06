@@ -50,6 +50,42 @@ class PDFUrlRequest(BaseModel):
     url: str              # URL of the PDF to download
     api_key: str          # OpenAI API key for authentication
 
+def extract_paper_title(documents: list) -> Optional[str]:
+    """Extract paper title from the first few chunks of the document."""
+    if not documents:
+        return None
+    
+    # Get the first chunk and look for title patterns
+    first_chunk = documents[0][:1000]  # First 1000 characters
+    lines = first_chunk.split('\n')
+    
+    # Look for title patterns - typically the first substantial line
+    # or lines that look like titles (proper case, not too long)
+    potential_titles = []
+    
+    for i, line in enumerate(lines[:20]):  # Check first 20 lines
+        line = line.strip()
+        if not line:
+            continue
+            
+        # Skip common header elements
+        if any(skip in line.lower() for skip in ['page', 'doi:', 'http', 'www.', 'abstract', 'keywords', 'introduction']):
+            continue
+            
+        # Look for title-like characteristics
+        words = line.split()
+        if (3 <= len(words) <= 20 and  # Reasonable word count
+            len(line) > 10 and len(line) < 200 and  # Reasonable length
+            sum(1 for word in words if word[0].isupper()) >= len(words) * 0.3):  # Some capitalization
+            
+            potential_titles.append((line, i))
+    
+    # Return the first reasonable title found
+    if potential_titles:
+        return potential_titles[0][0]
+    
+    return None
+
 def download_pdf_from_url(url: str) -> str:
     """Download PDF from URL and save to temporary file. Returns the temp file path."""
     try:
@@ -148,6 +184,9 @@ async def upload_pdf(
             pdf_loader = PDFLoader(tmp_file_path)
             documents = pdf_loader.load_documents()
             
+            # Extract paper title from the documents
+            paper_title = extract_paper_title(documents)
+            
             # Split the documents into chunks
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
             chunks = text_splitter.split_texts(documents)
@@ -164,6 +203,7 @@ async def upload_pdf(
             vector_databases[pdf_id] = vector_db
             pdf_metadata[pdf_id] = {
                 "filename": file.filename,
+                "paper_title": paper_title,
                 "source": "file_upload",
                 "num_chunks": len(chunks),
                 "total_characters": sum(len(chunk) for chunk in chunks)
@@ -172,6 +212,7 @@ async def upload_pdf(
             return {
                 "pdf_id": pdf_id,
                 "filename": file.filename,
+                "paper_title": paper_title,
                 "source": "file_upload",
                 "num_chunks": len(chunks),
                 "message": "PDF uploaded and indexed successfully"
@@ -206,6 +247,9 @@ async def upload_pdf_url(request: PDFUrlRequest):
             pdf_loader = PDFLoader(tmp_file_path)
             documents = pdf_loader.load_documents()
             
+            # Extract paper title from the documents
+            paper_title = extract_paper_title(documents)
+            
             # Split the documents into chunks
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
             chunks = text_splitter.split_texts(documents)
@@ -227,6 +271,7 @@ async def upload_pdf_url(request: PDFUrlRequest):
             vector_databases[pdf_id] = vector_db
             pdf_metadata[pdf_id] = {
                 "filename": filename,
+                "paper_title": paper_title,
                 "source": "url",
                 "url": request.url,
                 "num_chunks": len(chunks),
@@ -236,6 +281,7 @@ async def upload_pdf_url(request: PDFUrlRequest):
             return {
                 "pdf_id": pdf_id,
                 "filename": filename,
+                "paper_title": paper_title,
                 "source": "url",
                 "url": request.url,
                 "num_chunks": len(chunks),
@@ -296,27 +342,88 @@ async def chat_pdf(request: PDFChatRequest):
         
         # Create RAG prompt for single or multiple documents
         if len(request.pdf_ids) == 1:
-            pdf_name = pdf_contexts[request.pdf_ids[0]]
-            system_prompt = f"""You are a research assistant specializing in academic publication analysis. Answer questions based on the provided context from the research document: "{pdf_name}".
+            pdf_id = request.pdf_ids[0]
+            pdf_metadata_entry = pdf_metadata[pdf_id]
+            pdf_name = pdf_metadata_entry["filename"]
+            paper_title = pdf_metadata_entry.get("paper_title")
+            source_info = pdf_metadata_entry.get("url", pdf_name)
+            
+            # Use paper title if available, otherwise use filename
+            display_name = paper_title if paper_title else pdf_name
+            
+            system_prompt = f"""You are a research assistant specializing in academic publication analysis. Answer questions based on the provided context from the research document.
 
-Use the following context to answer the user's question. If the answer is not in the context, say so clearly.
+**Document Information:**
+- Paper: {display_name}
+- Source: ({source_info})
 
-Context:
+**Formatting Instructions:**
+- Use clear markdown formatting for better readability
+- Structure your response with appropriate headings (##, ###) when helpful
+- Use bullet points (-) or numbered lists for multiple items
+- Use **bold** for emphasis on key terms or findings
+- Use *italics* for paper titles when mentioned
+- Use `code blocks` for technical terms, formulas, or specific measurements
+- Add line breaks between paragraphs for better readability
+
+**Citation Requirements:**
+- When referring to this research paper, use the title "{display_name}" 
+- Always include the source in parentheses: ({source_info})
+- When quoting or referencing specific findings, clearly indicate they come from this paper
+
+**Content Guidelines:**
+- Provide accurate, scholarly answers based on the context below
+- If the answer is not in the context, state this clearly
+- Structure your response logically with clear sections
+- Use academic language appropriate for research analysis
+
+**Context:**
 {context}
 
-Please provide accurate, scholarly answers based on the context above."""
+Please provide a well-formatted, scholarly response based on the context above."""
         else:
-            pdf_names = [pdf_contexts[pdf_id] for pdf_id in request.pdf_ids]
-            system_prompt = f"""You are a research assistant specializing in comparative analysis of academic publications. Answer questions based on the provided context from {len(request.pdf_ids)} research documents: {', '.join(pdf_names)}.
+            pdf_details = []
+            for pdf_id in request.pdf_ids:
+                pdf_metadata_entry = pdf_metadata[pdf_id]
+                pdf_name = pdf_metadata_entry["filename"]
+                paper_title = pdf_metadata_entry.get("paper_title")
+                source_info = pdf_metadata_entry.get("url", pdf_name)
+                display_name = paper_title if paper_title else pdf_name
+                pdf_details.append(f"- {display_name} ({source_info})")
+            
+            papers_list = "\n".join(pdf_details)
+            
+            system_prompt = f"""You are a research assistant specializing in comparative analysis of academic publications. Answer questions based on the provided context from {len(request.pdf_ids)} research documents.
 
-When comparing or analyzing across documents, clearly indicate which document supports each point. Use the [From: filename] tags to identify sources.
+**Document Information:**
+{papers_list}
 
-Use the following context to answer the user's question. If the answer is not in the context, say so clearly.
+**Formatting Instructions:**
+- Use clear markdown formatting for better readability
+- Structure your response with appropriate headings (##, ###) when helpful
+- Use bullet points (-) or numbered lists for multiple items
+- Use **bold** for emphasis on key terms or findings
+- Use *italics* for paper titles when mentioned
+- Use `code blocks` for technical terms, formulas, or specific measurements
+- Add line breaks between paragraphs for better readability
 
-Context:
+**Citation Requirements:**
+- When referring to papers, use their titles (shown above) rather than filenames
+- Always include the source in parentheses after mentioning a paper
+- When comparing findings across papers, clearly attribute each point to its source
+- Use the [From: filename] tags in the context to identify sources accurately
+
+**Content Guidelines:**
+- Provide accurate, scholarly answers with proper source attribution
+- When comparing across documents, organize by themes or create clear comparisons
+- If information is not available in the context, state this clearly
+- Structure your response logically with clear sections for each paper or theme
+- Use academic language appropriate for research analysis
+
+**Context:**
 {context}
 
-Please provide accurate, scholarly answers with proper source attribution based on the context above."""
+Please provide a well-formatted, scholarly response with proper citations based on the context above."""
         
         # Set up OpenAI API key
         os.environ['OPENAI_API_KEY'] = request.api_key
@@ -348,6 +455,7 @@ async def list_pdfs():
                 {
                     "pdf_id": pdf_id,
                     "filename": metadata["filename"],
+                    "paper_title": metadata.get("paper_title"),
                     "source": metadata.get("source", "unknown"),
                     "url": metadata.get("url", None),
                     "num_chunks": metadata["num_chunks"],
