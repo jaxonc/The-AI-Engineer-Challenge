@@ -179,84 +179,31 @@ export default function Home() {
     return history.length === 25
   }
 
-  // Build context from recent messages (for conversations under 25 messages)
-  const buildRecentMessageContext = (history: ChatMessage[]): string => {
-    if (history.length === 0) return ''
-    
-    // Take last 10 messages for context (or all if less than 10)
-    const recentMessages = history.slice(-10)
-    const contextMessages = recentMessages
-      .map(msg => `${msg.type.toUpperCase()}: ${msg.content}`)
-      .join('\n')
-    
-    return contextMessages ? `Recent conversation context:\n${contextMessages}` : ''
-  }
-
-  // Get comprehensive context (summary + recent messages or just recent messages)
-  const getComprehensiveContext = (mode: ChatMode): string => {
-    // Get history and summary for the specified mode, not current UI mode
-    const currentHistory = mode === 'regular' ? regularChatHistory : pdfChatHistory
-    const summary = mode === 'regular' ? regularContextSummary : pdfContextSummary
-    
-    if (currentHistory.length < 25) {
-      // Phase 1: Use recent messages (1-24 messages)
-      return buildRecentMessageContext(currentHistory)
-    } else {
-      // Phase 2: Use summary + last 5 messages (25+ messages)
-      const recentMessages = currentHistory.slice(-5)
-      const recentContext = recentMessages
-        .map(msg => `${msg.type.toUpperCase()}: ${msg.content}`)
-        .join('\n')
-      
-      if (summary && recentContext) {
-        return `Previous conversation summary: ${summary}\n\nRecent messages:\n${recentContext}`
-      } else if (summary) {
-        return `Previous conversation summary: ${summary}`
-      } else if (recentContext) {
-        return `Recent conversation context:\n${recentContext}`
-      }
-    }
-    
-    return ''
-  }
-
-  // Add message to chat history
-  const addMessage = (type: 'user' | 'assistant', content: string, mode: ChatMode, pdfIds?: string[]) => {
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      type,
-      content,
-      timestamp: new Date(),
-      mode,
-      pdfIds
-    }
-    
-    // Use the message mode, not the current UI mode
-    if (mode === 'regular') {
-      setRegularChatHistory((prev: ChatMessage[]) => [...prev, message])
-    } else {
-      setPdfChatHistory((prev: ChatMessage[]) => [...prev, message])
-    }
-  }
-
-  // Update last assistant message (for streaming)
+  // Update last assistant message (for streaming) - enhanced for reliability
   const updateLastAssistantMessage = (content: string, mode: ChatMode) => {
-    // Use the message mode, not the current UI mode
     if (mode === 'regular') {
       setRegularChatHistory((prev: ChatMessage[]) => {
+        if (prev.length === 0) return prev
         const newHistory = [...prev]
-        const lastMessage = newHistory[newHistory.length - 1]
-        if (lastMessage && lastMessage.type === 'assistant') {
-          lastMessage.content = content
+        // Find the last assistant message (should be the last message we just added)
+        for (let i = newHistory.length - 1; i >= 0; i--) {
+          if (newHistory[i].type === 'assistant') {
+            newHistory[i] = { ...newHistory[i], content }
+            break
+          }
         }
         return newHistory
       })
     } else {
       setPdfChatHistory((prev: ChatMessage[]) => {
+        if (prev.length === 0) return prev
         const newHistory = [...prev]
-        const lastMessage = newHistory[newHistory.length - 1]
-        if (lastMessage && lastMessage.type === 'assistant') {
-          lastMessage.content = content
+        // Find the last assistant message (should be the last message we just added)
+        for (let i = newHistory.length - 1; i >= 0; i--) {
+          if (newHistory[i].type === 'assistant') {
+            newHistory[i] = { ...newHistory[i], content }
+            break
+          }
         }
         return newHistory
       })
@@ -486,22 +433,71 @@ export default function Home() {
     setIsLoading(true)
     setError('')
 
-    // Capture the mode at the beginning to prevent race conditions
+    // Capture the mode and state at the beginning to prevent all race conditions
     const messageMode = chatMode
     const messagePdfIds = messageMode === 'pdf' ? selectedPdfIds : undefined
+    
+    // Get current history BEFORE adding any new messages (this is the correct context)
+    const currentHistory = messageMode === 'regular' ? regularChatHistory : pdfChatHistory
+    const currentSummary = messageMode === 'regular' ? regularContextSummary : pdfContextSummary
+    
+    // Build context from existing history (before adding new messages)
+    let context = ''
+    if (currentHistory.length < 25) {
+      // Phase 1: Use recent messages (1-24 messages)
+      if (currentHistory.length > 0) {
+        const recentMessages = currentHistory.slice(-10)
+        const contextMessages = recentMessages
+          .map(msg => `${msg.type.toUpperCase()}: ${msg.content}`)
+          .join('\n')
+        context = contextMessages ? `Recent conversation context:\n${contextMessages}` : ''
+      }
+    } else {
+      // Phase 2: Use summary + last 5 messages (25+ messages)
+      const recentMessages = currentHistory.slice(-5)
+      const recentContext = recentMessages
+        .map(msg => `${msg.type.toUpperCase()}: ${msg.content}`)
+        .join('\n')
+      
+      if (currentSummary && recentContext) {
+        context = `Previous conversation summary: ${currentSummary}\n\nRecent messages:\n${recentContext}`
+      } else if (currentSummary) {
+        context = `Previous conversation summary: ${currentSummary}`
+      } else if (recentContext) {
+        context = `Recent conversation context:\n${recentContext}`
+      }
+    }
 
-    // Add user message to history
-    addMessage('user', userMessage, messageMode, messagePdfIds)
+    // Create user message object
+    const userMessageObj: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: userMessage,
+      timestamp: new Date(),
+      mode: messageMode,
+      pdfIds: messagePdfIds
+    }
 
-    // Add empty assistant message for streaming
-    addMessage('assistant', '', messageMode, messagePdfIds)
+    // Create assistant message object  
+    const assistantMessageObj: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      type: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      mode: messageMode,
+      pdfIds: messagePdfIds
+    }
+
+    // Add both messages to history at once to prevent race conditions
+    if (messageMode === 'regular') {
+      setRegularChatHistory(prev => [...prev, userMessageObj, assistantMessageObj])
+    } else {
+      setPdfChatHistory(prev => [...prev, userMessageObj, assistantMessageObj])
+    }
 
     try {
       let requestData: any
       let endpoint: string
-
-      // Get comprehensive context
-      const context = getComprehensiveContext(messageMode)
 
       if (messageMode === 'regular') {
         // Include context in developer message for regular chat
@@ -570,9 +566,10 @@ export default function Home() {
         }
 
         // Check if we should update the conversation summary for the message mode
-        const messageHistory = messageMode === 'regular' ? regularChatHistory : pdfChatHistory
-        if (shouldUpdateSummary(messageHistory)) {
-          const newSummary = await createConversationSummary(messageHistory)
+        // Use the updated history (original + 2 new messages)
+        const updatedHistoryLength = currentHistory.length + 2
+        if (updatedHistoryLength === 25) {
+          const newSummary = await createConversationSummary([...currentHistory, userMessageObj, assistantMessageObj])
           if (newSummary) {
             if (messageMode === 'regular') {
               setRegularContextSummary(newSummary)
