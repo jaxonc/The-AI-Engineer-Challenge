@@ -43,8 +43,14 @@ export default function Home() {
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState('gpt-4o-mini')
   
-  // Chat history state
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+  // Separate chat histories for each mode
+  const [regularChatHistory, setRegularChatHistory] = useState<ChatMessage[]>([])
+  const [pdfChatHistory, setPdfChatHistory] = useState<ChatMessage[]>([])
+  
+  // Context memory system - lightweight conversation summaries
+  const [regularContextSummary, setRegularContextSummary] = useState('')
+  const [pdfContextSummary, setPdfContextSummary] = useState('')
+  
   const [currentMessage, setCurrentMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -70,14 +76,48 @@ export default function Home() {
   const [pdfUrl, setPdfUrl] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Get current chat history based on mode
+  const getCurrentChatHistory = () => {
+    return chatMode === 'regular' ? regularChatHistory : pdfChatHistory
+  }
 
+  // Set chat history for current mode
+  const setCurrentChatHistory = (history: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+    if (typeof history === 'function') {
+      if (chatMode === 'regular') {
+        setRegularChatHistory(history)
+      } else {
+        setPdfChatHistory(history)
+      }
+    } else {
+      if (chatMode === 'regular') {
+        setRegularChatHistory(history)
+      } else {
+        setPdfChatHistory(history)
+      }
+    }
+  }
+
+  // Get current context summary
+  const getCurrentContextSummary = () => {
+    return chatMode === 'regular' ? regularContextSummary : pdfContextSummary
+  }
+
+  // Set context summary for current mode
+  const setCurrentContextSummary = (summary: string) => {
+    if (chatMode === 'regular') {
+      setRegularContextSummary(summary)
+    } else {
+      setPdfContextSummary(summary)
+    }
+  }
 
   // Auto-scroll chat history
   useEffect(() => {
     if (chatHistoryRef.current) {
       chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight
     }
-  }, [chatHistory])
+  }, [getCurrentChatHistory(), chatMode])
 
   // Update document title based on mode
   useEffect(() => {
@@ -87,6 +127,56 @@ export default function Home() {
       document.title = 'Research Literature Review Assistant'
     }
   }, [chatMode])
+
+  // Create conversation summary from recent messages
+  const createConversationSummary = async (messages: ChatMessage[]): Promise<string> => {
+    if (messages.length === 0) return ''
+    
+    // Take last 20 messages for summarization
+    const recentMessages = messages.slice(-20)
+    const conversationText = recentMessages
+      .map(msg => `${msg.type.toUpperCase()}: ${msg.content}`)
+      .join('\n')
+    
+    if (!apiKey || conversationText.length < 100) return ''
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          developer_message: "Summarize this conversation in 2-3 sentences, focusing on key topics, decisions, and context that would be helpful for continuing the conversation. Be concise but include important details.",
+          user_message: `Please summarize this recent conversation:\n\n${conversationText}`,
+          api_key: apiKey,
+          model: 'gpt-4o-mini'
+        }),
+      })
+
+      if (res.ok) {
+        const reader = res.body?.getReader()
+        if (reader) {
+          let summary = ''
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            summary += new TextDecoder().decode(value)
+          }
+          return summary.trim()
+        }
+      }
+    } catch (err) {
+      console.error('Failed to create conversation summary:', err)
+    }
+    
+    return ''
+  }
+
+  // Check if summary should be updated (every 25 messages)
+  const shouldUpdateSummary = (history: ChatMessage[]): boolean => {
+    return history.length > 0 && history.length % 25 === 0
+  }
 
   // Add message to chat history
   const addMessage = (type: 'user' | 'assistant', content: string, mode: ChatMode, pdfIds?: string[]) => {
@@ -98,12 +188,12 @@ export default function Home() {
       mode,
       pdfIds
     }
-    setChatHistory(prev => [...prev, message])
+    setCurrentChatHistory((prev: ChatMessage[]) => [...prev, message])
   }
 
   // Update last assistant message (for streaming)
   const updateLastAssistantMessage = (content: string) => {
-    setChatHistory(prev => {
+    setCurrentChatHistory((prev: ChatMessage[]) => {
       const newHistory = [...prev]
       const lastMessage = newHistory[newHistory.length - 1]
       if (lastMessage && lastMessage.type === 'assistant') {
@@ -346,9 +436,18 @@ export default function Home() {
       let requestData: any
       let endpoint: string
 
+      // Get current context summary
+      const contextSummary = getCurrentContextSummary()
+
       if (chatMode === 'regular') {
+        // Include context summary in developer message for regular chat
+        let developerMessage = regularFormData.developer_message
+        if (contextSummary) {
+          developerMessage = `Previous conversation context: ${contextSummary}\n\n${developerMessage || 'You are a helpful AI assistant.'}`
+        }
+
         requestData = {
-          developer_message: regularFormData.developer_message,
+          developer_message: developerMessage,
           user_message: userMessage,
           api_key: apiKey,
           model
@@ -359,11 +458,13 @@ export default function Home() {
           setError('Please select at least one PDF for analysis')
           return
         }
+        
         requestData = {
           user_message: userMessage,
           pdf_ids: selectedPdfIds,
           api_key: apiKey,
-          model
+          model,
+          context_summary: contextSummary // Include context for PDF chat
         }
         endpoint = '/api/chat-pdf'
       }
@@ -402,6 +503,15 @@ export default function Home() {
           const chunk = new TextDecoder().decode(value)
           accumulatedResponse += chunk
           updateLastAssistantMessage(accumulatedResponse)
+        }
+
+        // Check if we should update the conversation summary
+        const currentHistory = getCurrentChatHistory()
+        if (shouldUpdateSummary(currentHistory)) {
+          const newSummary = await createConversationSummary(currentHistory)
+          if (newSummary) {
+            setCurrentContextSummary(newSummary)
+          }
         }
       }
     } catch (err) {
@@ -627,7 +737,7 @@ export default function Home() {
           <div className="chat-area">
             {/* Chat History */}
             <div className="chat-history" ref={chatHistoryRef}>
-              {chatHistory.length === 0 ? (
+              {getCurrentChatHistory().length === 0 ? (
                 <div className="chat-welcome">
                   <div className="welcome-icon">
                     {chatMode === 'regular' ? '💬' : '📚'}
@@ -654,7 +764,7 @@ export default function Home() {
                   )}
                 </div>
               ) : (
-                chatHistory.map((message) => (
+                getCurrentChatHistory().map((message) => (
                   <div
                     key={message.id}
                     className={`chat-message ${message.type === 'user' ? 'user' : 'assistant'}`}
@@ -707,6 +817,18 @@ export default function Home() {
                     placeholder="Optional: Add system instructions or context..."
                     className="developer-input"
                   />
+                  {getCurrentContextSummary() && (
+                    <div className="context-indicator">
+                      🧠 Context memory active ({getCurrentChatHistory().length} messages)
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* PDF Mode Context Indicator */}
+              {chatMode === 'pdf' && getCurrentContextSummary() && (
+                <div className="context-indicator">
+                  🧠 Context memory active ({getCurrentChatHistory().length} messages)
                 </div>
               )}
               

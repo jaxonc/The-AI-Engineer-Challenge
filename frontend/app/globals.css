@@ -1162,6 +1162,18 @@ body {
   font-size: 0.875rem;
 }
 
+.context-indicator {
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--apple-accent);
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 122, 255, 0.2);
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  text-align: center;
+  font-weight: 500;
+}
+
 .message-input-section {
   display: flex;
   flex-direction: column;
