@@ -93,10 +93,15 @@ export default function Home() {
       return
     }
 
-    // Client-side file size validation (10MB limit)
-    const maxFileSize = 10 * 1024 * 1024 // 10MB in bytes
+    // Client-side file size validation (4.5MB limit - Vercel's hard limit)
+    // NOTE: Vercel has a hard 4.5MB request body limit for serverless functions
+    // For larger files, consider:
+    // 1. Direct client uploads to blob storage (Vercel Blob, AWS S3, etc.)
+    // 2. Using a different hosting platform with higher limits
+    // 3. Splitting files or using file compression
+    const maxFileSize = 4.5 * 1024 * 1024 // 4.5MB in bytes (Vercel's limit)
     if (file.size > maxFileSize) {
-      setError('File too large. Please upload a PDF smaller than 10MB.')
+      setError('File too large. Please upload a PDF smaller than 4.5MB (Vercel limit).')
       // Clear the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
@@ -131,7 +136,7 @@ export default function Home() {
           } catch (jsonParseError) {
             // Handle non-JSON responses (e.g., HTML error pages from Vercel)
             if (responseText.includes('Request Entity Too Large') || res.status === 413) {
-              errorMessage = 'File too large. Please upload a smaller PDF (max 10MB recommended)'
+              errorMessage = 'File too large. Please upload a smaller PDF (max 4.5MB - Vercel limit)'
             } else if (responseText.includes('Bad Request') || res.status === 400) {
               errorMessage = 'Invalid file format. Please upload a valid PDF file'
             } else {
@@ -204,7 +209,7 @@ export default function Home() {
           } catch (jsonParseError) {
             // Handle non-JSON responses (e.g., HTML error pages from Vercel)
             if (responseText.includes('Request Entity Too Large') || res.status === 413) {
-              errorMessage = 'PDF file too large. Please use a smaller PDF (max 10MB recommended)'
+              errorMessage = 'File too large. Please upload a smaller PDF (max 4.5MB - Vercel limit)'
             } else if (responseText.includes('Bad Request') || res.status === 400) {
               errorMessage = 'Invalid PDF URL or file format'
             } else {
@@ -517,7 +522,7 @@ export default function Home() {
                     Click to upload PDF
                   </div>
                   <div className="apple-caption">
-                    Select a research paper or academic document (PDF format only, max 10MB)
+                    Select a research paper or academic document (PDF format only, max 4.5MB)
                   </div>
                 </div>
               )}
@@ -531,7 +536,7 @@ export default function Home() {
                       type="url"
                       value={pdfUrl}
                       onChange={(e) => setPdfUrl(e.target.value)}
-                      placeholder="https://example.com/research-paper.pdf (max 10MB)"
+                      placeholder="https://example.com/research-paper.pdf (max 4.5MB)"
                       className="apple-input"
                       style={{ flex: 1 }}
                     />
