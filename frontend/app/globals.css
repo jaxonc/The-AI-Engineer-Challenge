@@ -597,4 +597,642 @@ body {
 
 .apple-spin {
   animation: apple-spin 1s linear infinite;
+}
+
+/* Landing Page Styles */
+.landing-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-container {
+  width: 100%;
+  max-width: 500px;
+  padding: 2rem;
+}
+
+.landing-content {
+  background: white;
+  border-radius: 20px;
+  padding: 3rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.landing-header {
+  margin-bottom: 2rem;
+}
+
+.landing-form {
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.landing-features {
+  margin-top: 2rem;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.feature-item {
+  text-align: center;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--apple-surface);
+}
+
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.feature-item h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--apple-primary);
+}
+
+.feature-item p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--apple-secondary);
+}
+
+/* Chat App Layout */
+.chat-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--apple-background);
+}
+
+.chat-header {
+  background: white;
+  border-bottom: 1px solid var(--apple-border);
+  padding: 1rem 0;
+  flex-shrink: 0;
+}
+
+.chat-header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.chat-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--apple-primary);
+  margin: 0;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.chat-mode-toggle {
+  display: flex;
+  background: var(--apple-surface);
+  border-radius: 8px;
+  padding: 0.25rem;
+}
+
+.chat-mode-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--apple-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chat-mode-button.active {
+  background: white;
+  color: var(--apple-primary);
+  box-shadow: 0 1px 3px var(--apple-shadow);
+}
+
+.logout-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--apple-border);
+  background: white;
+  color: var(--apple-secondary);
+  font-size: 0.875rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logout-button:hover {
+  background: var(--apple-surface);
+}
+
+.chat-main {
+  flex: 1;
+  overflow: hidden;
+}
+
+.chat-container {
+  display: flex;
+  height: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Sidebar Styles */
+.chat-sidebar {
+  width: 350px;
+  background: white;
+  border-right: 1px solid var(--apple-border);
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.sidebar-content {
+  padding: 1.5rem;
+}
+
+.sidebar-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--apple-primary);
+  margin: 0 0 1.5rem 0;
+}
+
+.sidebar-section {
+  margin-bottom: 2rem;
+}
+
+.sidebar-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--apple-primary);
+  margin: 0 0 1rem 0;
+}
+
+.sidebar-toggle {
+  display: flex;
+  background: var(--apple-surface);
+  border-radius: 6px;
+  padding: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.sidebar-toggle-button {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--apple-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle-button.active {
+  background: white;
+  color: var(--apple-primary);
+  box-shadow: 0 1px 2px var(--apple-shadow);
+}
+
+.sidebar-upload-area {
+  background: var(--apple-surface);
+  border: 2px dashed var(--apple-border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-upload-area:hover {
+  border-color: var(--apple-accent);
+  background: rgba(0, 122, 255, 0.02);
+}
+
+.upload-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.upload-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--apple-primary);
+  margin-bottom: 0.25rem;
+}
+
+.upload-caption {
+  font-size: 0.75rem;
+  color: var(--apple-secondary);
+}
+
+.sidebar-url-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar-input {
+  padding: 0.5rem;
+  border: 1px solid var(--apple-border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.sidebar-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: var(--apple-accent);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-button:hover:not(:disabled) {
+  background: var(--apple-accent-hover);
+}
+
+.sidebar-button:disabled {
+  background: var(--apple-tertiary);
+  cursor: not-allowed;
+}
+
+.sidebar-success {
+  background: rgba(48, 209, 88, 0.1);
+  color: var(--apple-success);
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(48, 209, 88, 0.2);
+  font-size: 0.875rem;
+}
+
+.sidebar-pdf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar-pdf-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--apple-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-pdf-item:hover {
+  border-color: var(--apple-accent);
+  background: rgba(0, 122, 255, 0.02);
+}
+
+.sidebar-pdf-item.selected {
+  border-color: var(--apple-accent);
+  background: rgba(0, 122, 255, 0.05);
+}
+
+.sidebar-checkbox {
+  margin-top: 0.125rem;
+}
+
+.sidebar-pdf-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-pdf-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--apple-primary);
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+}
+
+.sidebar-pdf-filename {
+  font-size: 0.75rem;
+  color: var(--apple-secondary);
+  font-style: italic;
+  margin-bottom: 0.25rem;
+}
+
+.sidebar-pdf-meta {
+  font-size: 0.75rem;
+  color: var(--apple-secondary);
+}
+
+/* Chat Area Styles */
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  overflow: hidden;
+}
+
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.chat-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 2rem;
+  height: 100%;
+  min-height: 400px;
+}
+
+.welcome-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.chat-welcome h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--apple-primary);
+  margin: 0 0 1rem 0;
+}
+
+.chat-welcome p {
+  color: var(--apple-secondary);
+  margin: 0 0 1rem 0;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+.welcome-hint {
+  color: var(--apple-accent);
+  font-weight: 500;
+}
+
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chat-message.user {
+  align-items: flex-end;
+}
+
+.chat-message.assistant {
+  align-items: flex-start;
+}
+
+.message-content {
+  max-width: 70%;
+  padding: 1rem;
+  border-radius: 12px;
+  line-height: 1.5;
+}
+
+.chat-message.user .message-content {
+  background: var(--apple-accent);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message.assistant .message-content {
+  background: var(--apple-surface);
+  color: var(--apple-primary);
+  border-bottom-left-radius: 4px;
+}
+
+.user-message-text {
+  margin: 0;
+}
+
+.message-timestamp {
+  font-size: 0.75rem;
+  color: var(--apple-secondary);
+  padding: 0 0.5rem;
+}
+
+.code-block {
+  background: var(--apple-surface);
+  border: 1px solid var(--apple-border);
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.code-block code {
+  background: transparent;
+  padding: 0;
+  border: none;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.inline-code {
+  background: var(--apple-surface);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* Chat Input Styles */
+.chat-input-container {
+  border-top: 1px solid var(--apple-border);
+  padding: 1rem;
+  flex-shrink: 0;
+}
+
+.developer-message-section {
+  margin-bottom: 0.75rem;
+}
+
+.developer-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--apple-border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: var(--apple-surface);
+}
+
+.developer-input:focus {
+  outline: none;
+  border-color: var(--apple-accent);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.chat-error {
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--apple-error);
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.message-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.message-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.message-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid var(--apple-border);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.message-input:focus {
+  outline: none;
+  border-color: var(--apple-accent);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.message-input:disabled {
+  background: var(--apple-surface);
+  color: var(--apple-secondary);
+  cursor: not-allowed;
+}
+
+.send-button {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: var(--apple-accent);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+.send-button:hover:not(:disabled) {
+  background: var(--apple-accent-hover);
+  transform: scale(1.05);
+}
+
+.send-button:disabled {
+  background: var(--apple-tertiary);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.model-selection {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.model-select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--apple-border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-family: inherit;
+  background: white;
+  color: var(--apple-secondary);
+}
+
+.model-select:focus {
+  outline: none;
+  border-color: var(--apple-accent);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .chat-header-content {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .chat-container {
+    flex-direction: column;
+  }
+  
+  .chat-sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--apple-border);
+  }
+  
+  .message-content {
+    max-width: 85%;
+  }
+  
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
 } 

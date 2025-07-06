@@ -27,25 +27,128 @@ interface UploadedPDF {
   total_characters: number
 }
 
+interface ChatMessage {
+  id: string
+  type: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+  mode: 'regular' | 'pdf'
+  pdfIds?: string[]
+}
+
 type ChatMode = 'regular' | 'pdf'
 
+// Landing Page Component
+function LandingPage({ onApiKeySubmit }: { onApiKeySubmit: (apiKey: string) => void }) {
+  const [apiKey, setApiKey] = useState('')
+  const [error, setError] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!apiKey.trim()) {
+      setError('Please enter your OpenAI API key')
+      return
+    }
+    if (!apiKey.startsWith('sk-')) {
+      setError('API key should start with "sk-"')
+      return
+    }
+    onApiKeySubmit(apiKey.trim())
+  }
+
+  return (
+    <div className="landing-page">
+      <div className="space-particle"></div>
+      <div className="space-particle"></div>
+      <div className="space-particle"></div>
+      <div className="space-particle"></div>
+      <div className="space-particle"></div>
+      
+      <div className="landing-container">
+        <div className="landing-content">
+          <div className="landing-header">
+            <h1 className="apple-title">AI Research Assistant</h1>
+            <p className="apple-subtitle">
+              Your intelligent companion for general conversations and research paper analysis
+            </p>
+          </div>
+
+          <div className="landing-form">
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="apple-label">OpenAI API Key</label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Enter your OpenAI API key (sk-...)"
+                  className="apple-input"
+                  autoFocus
+                />
+                <p className="apple-caption">
+                  Your API key is stored locally and never sent to our servers.
+                </p>
+              </div>
+
+              {error && (
+                <div className="apple-error">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={!apiKey.trim()}
+                className="apple-button apple-button-primary"
+                style={{ width: '100%' }}
+              >
+                Get Started
+              </button>
+            </form>
+          </div>
+
+          <div className="landing-features">
+            <div className="feature-grid">
+              <div className="feature-item">
+                <div className="feature-icon">💬</div>
+                <h3>General Chat</h3>
+                <p>Have conversations with AI models for any topic or task</p>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon">📚</div>
+                <h3>Research Analysis</h3>
+                <p>Upload and analyze research papers with advanced RAG capabilities</p>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon">🔍</div>
+                <h3>Document Comparison</h3>
+                <p>Compare up to 3 research documents simultaneously</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
+  const [hasApiKey, setHasApiKey] = useState(false)
   const [chatMode, setChatMode] = useState<ChatMode>('regular')
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState('gpt-4o-mini')
   
-  // Regular chat state
+  // Chat history state
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+  const [currentMessage, setCurrentMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const chatHistoryRef = useRef<HTMLDivElement>(null)
+
+  // Regular chat state (simplified)
   const [regularFormData, setRegularFormData] = useState<ChatRequest>({
     developer_message: '',
     user_message: '',
-    model: 'gpt-4o-mini',
-    api_key: ''
-  })
-
-  // PDF chat state
-  const [pdfFormData, setPdfFormData] = useState<PDFChatRequest>({
-    user_message: '',
-    pdf_ids: [],
     model: 'gpt-4o-mini',
     api_key: ''
   })
@@ -54,10 +157,6 @@ export default function Home() {
   const [pdfSelectionMode, setPdfSelectionMode] = useState<'single' | 'multiple'>('single')
   const [selectedPdfIds, setSelectedPdfIds] = useState<string[]>([])
 
-  const [response, setResponse] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-
   // PDF upload state
   const [uploadedPDFs, setUploadedPDFs] = useState<UploadedPDF[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -65,6 +164,72 @@ export default function Home() {
   const [uploadType, setUploadType] = useState<'file' | 'url'>('file')
   const [pdfUrl, setPdfUrl] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Check for stored API key on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('openai_api_key')
+    if (stored) {
+      setApiKey(stored)
+      setHasApiKey(true)
+    }
+  }, [])
+
+  // Auto-scroll chat history
+  useEffect(() => {
+    if (chatHistoryRef.current) {
+      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight
+    }
+  }, [chatHistory])
+
+  // Update document title based on mode
+  useEffect(() => {
+    if (chatMode === 'regular') {
+      document.title = 'OpenAI API Chat Interface'
+    } else {
+      document.title = 'Research Literature Review Assistant'
+    }
+  }, [chatMode])
+
+  // Handle API key submission from landing page
+  const handleApiKeySubmit = (key: string) => {
+    setApiKey(key)
+    setHasApiKey(true)
+    localStorage.setItem('openai_api_key', key)
+  }
+
+  // Handle logout (clear API key)
+  const handleLogout = () => {
+    setApiKey('')
+    setHasApiKey(false)
+    setChatHistory([])
+    setSelectedPdfIds([])
+    localStorage.removeItem('openai_api_key')
+  }
+
+  // Add message to chat history
+  const addMessage = (type: 'user' | 'assistant', content: string, mode: ChatMode, pdfIds?: string[]) => {
+    const message: ChatMessage = {
+      id: Date.now().toString(),
+      type,
+      content,
+      timestamp: new Date(),
+      mode,
+      pdfIds
+    }
+    setChatHistory(prev => [...prev, message])
+  }
+
+  // Update last assistant message (for streaming)
+  const updateLastAssistantMessage = (content: string) => {
+    setChatHistory(prev => {
+      const newHistory = [...prev]
+      const lastMessage = newHistory[newHistory.length - 1]
+      if (lastMessage && lastMessage.type === 'assistant') {
+        lastMessage.content = content
+      }
+      return newHistory
+    })
+  }
 
   // Fetch uploaded PDFs on component mount
   const fetchPDFs = async () => {
@@ -81,8 +246,10 @@ export default function Home() {
 
   // Initialize PDFs on component mount
   useEffect(() => {
-    fetchPDFs()
-  }, [])
+    if (hasApiKey) {
+      fetchPDFs()
+    }
+  }, [hasApiKey])
 
   // Handle PDF upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,153 +407,12 @@ export default function Home() {
     }
   }
 
-  // Handle regular chat submission
-  const handleRegularChat = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-    setResponse('')
-
-    const requestData = {
-      ...regularFormData,
-      api_key: apiKey,
-      model
-    }
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      })
-
-      if (!res.ok) {
-        let errorMessage = 'Request failed'
-        try {
-          // Read response as text first, then try to parse as JSON
-          const responseText = await res.text()
-          try {
-            const errorData = JSON.parse(responseText)
-            errorMessage = errorData.detail || errorData.error || 'Request failed'
-          } catch (jsonParseError) {
-            // Handle non-JSON responses
-            errorMessage = `Request failed (${res.status}): ${responseText.substring(0, 100)}...`
-          }
-        } catch (readError) {
-          errorMessage = `Request failed (${res.status}): Unable to read response`
-        }
-        throw new Error(errorMessage)
-      }
-
-      const reader = res.body?.getReader()
-      if (reader) {
-        let accumulatedResponse = ''
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          
-          const chunk = new TextDecoder().decode(value)
-          accumulatedResponse += chunk
-          setResponse(accumulatedResponse)
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Handle PDF chat submission
-  const handlePDFChat = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (selectedPdfIds.length === 0) {
-      setError('Please select at least one PDF for analysis')
-      return
-    }
-
-    if (selectedPdfIds.length > 3) {
-      setError('Maximum 3 PDFs can be selected for analysis')
-      return
-    }
-
-    setIsLoading(true)
-    setError('')
-    setResponse('')
-
-    const requestData = {
-      ...pdfFormData,
-      pdf_ids: selectedPdfIds,
-      api_key: apiKey,
-      model
-    }
-
-    try {
-      const res = await fetch('/api/chat-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      })
-
-      if (!res.ok) {
-        let errorMessage = 'Request failed'
-        try {
-          // Read response as text first, then try to parse as JSON
-          const responseText = await res.text()
-          try {
-            const errorData = JSON.parse(responseText)
-            errorMessage = errorData.detail || errorData.error || 'Request failed'
-          } catch (jsonParseError) {
-            // Handle non-JSON responses
-            errorMessage = `Request failed (${res.status}): ${responseText.substring(0, 100)}...`
-          }
-        } catch (readError) {
-          errorMessage = `Request failed (${res.status}): Unable to read response`
-        }
-        throw new Error(errorMessage)
-      }
-
-      const reader = res.body?.getReader()
-      if (reader) {
-        let accumulatedResponse = ''
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          
-          const chunk = new TextDecoder().decode(value)
-          accumulatedResponse += chunk
-          setResponse(accumulatedResponse)
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   // Handle regular input changes
   const handleRegularInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target
     setRegularFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
-
-  // Handle PDF input changes
-  const handlePDFInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target
-    setPdfFormData(prev => ({
       ...prev,
       [name]: value
     }))
@@ -418,362 +444,414 @@ export default function Home() {
     setError('')
   }
 
+  // Handle sending messages
+  const handleSendMessage = async () => {
+    if (!currentMessage.trim()) return
+
+    const userMessage = currentMessage.trim()
+    setCurrentMessage('')
+    setIsLoading(true)
+    setError('')
+
+    // Add user message to history
+    addMessage('user', userMessage, chatMode, chatMode === 'pdf' ? selectedPdfIds : undefined)
+
+    // Add empty assistant message for streaming
+    addMessage('assistant', '', chatMode, chatMode === 'pdf' ? selectedPdfIds : undefined)
+
+    try {
+      let requestData: any
+      let endpoint: string
+
+      if (chatMode === 'regular') {
+        requestData = {
+          developer_message: regularFormData.developer_message,
+          user_message: userMessage,
+          api_key: apiKey,
+          model
+        }
+        endpoint = '/api/chat'
+      } else {
+        if (selectedPdfIds.length === 0) {
+          setError('Please select at least one PDF for analysis')
+          return
+        }
+        requestData = {
+          user_message: userMessage,
+          pdf_ids: selectedPdfIds,
+          api_key: apiKey,
+          model
+        }
+        endpoint = '/api/chat-pdf'
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      })
+
+      if (!res.ok) {
+        let errorMessage = 'Request failed'
+        try {
+          const responseText = await res.text()
+          try {
+            const errorData = JSON.parse(responseText)
+            errorMessage = errorData.detail || errorData.error || 'Request failed'
+          } catch (jsonParseError) {
+            errorMessage = `Request failed (${res.status}): ${responseText.substring(0, 100)}...`
+          }
+        } catch (readError) {
+          errorMessage = `Request failed (${res.status}): Unable to read response`
+        }
+        throw new Error(errorMessage)
+      }
+
+      const reader = res.body?.getReader()
+      if (reader) {
+        let accumulatedResponse = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          
+          const chunk = new TextDecoder().decode(value)
+          accumulatedResponse += chunk
+          updateLastAssistantMessage(accumulatedResponse)
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle key press in message input
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
+  // Show landing page if no API key
+  if (!hasApiKey) {
+    return <LandingPage onApiKeySubmit={handleApiKeySubmit} />
+  }
+
   return (
-    <div>
+    <div className="chat-app">
       {/* Header */}
-      <header className="apple-header">
-        <div className="space-particle"></div>
-        <div className="space-particle"></div>
-        <div className="space-particle"></div>
-        <div className="space-particle"></div>
-        <div className="space-particle"></div>
-        <div className="apple-container apple-header-content">
-          <h1 className="apple-title">Research Publication Assistant</h1>
-          <p className="apple-subtitle">
-            Chat with AI models and analyze research papers with advanced RAG capabilities
-          </p>
+      <header className="chat-header">
+        <div className="chat-header-content">
+          <h1 className="chat-title">
+            {chatMode === 'regular' ? 'OpenAI API Chat Interface' : 'Research Literature Review Assistant'}
+          </h1>
+          <div className="chat-header-actions">
+            <div className="chat-mode-toggle">
+              <button
+                onClick={() => setChatMode('regular')}
+                className={`chat-mode-button ${chatMode === 'regular' ? 'active' : ''}`}
+              >
+                💬 General Chat
+              </button>
+              <button
+                onClick={() => setChatMode('pdf')}
+                className={`chat-mode-button ${chatMode === 'pdf' ? 'active' : ''}`}
+              >
+                📚 Research Analysis
+              </button>
+            </div>
+            <button onClick={handleLogout} className="logout-button">
+              🔐 Change API Key
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="apple-main">
-        <div className="apple-container">
-          {/* Configuration Section */}
-          <section className="apple-section">
-            <h2 className="apple-section-title">Configuration</h2>
-            <div className="apple-grid-2">
-              <div>
-                <label className="apple-label">OpenAI API Key</label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your OpenAI API key"
-                  className="apple-input"
-                />
-              </div>
-              <div>
-                <label className="apple-label">Model</label>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="apple-select"
-                >
-                  <option value="gpt-4o-mini">GPT-4o Mini</option>
-                  <option value="gpt-4o">GPT-4o</option>
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                </select>
-              </div>
-            </div>
-          </section>
-
-          {/* Mode Selection */}
-          <section className="apple-section">
-            <h2 className="apple-section-title">Choose Your Mode</h2>
-            <div className="apple-mode-toggle">
-              <button
-                onClick={() => setChatMode('regular')}
-                className={`apple-mode-button ${chatMode === 'regular' ? 'active' : ''}`}
-              >
-                General Chat
-              </button>
-              <button
-                onClick={() => setChatMode('pdf')}
-                className={`apple-mode-button ${chatMode === 'pdf' ? 'active' : ''}`}
-              >
-                Research Analysis
-              </button>
-            </div>
-          </section>
-
-          {/* PDF Upload Section */}
+      <main className="chat-main">
+        <div className="chat-container">
+          {/* Sidebar for PDF mode */}
           {chatMode === 'pdf' && (
-            <section className="apple-section">
-              <h2 className="apple-section-title">Upload Research Documents</h2>
-              
-              {/* Upload Type Toggle */}
-              <div className="apple-mode-toggle" style={{ marginBottom: '1.5rem' }}>
-                <button
-                  onClick={() => setUploadType('file')}
-                  className={`apple-mode-button ${uploadType === 'file' ? 'active' : ''}`}
-                >
-                  Upload File
-                </button>
-                <button
-                  onClick={() => setUploadType('url')}
-                  className={`apple-mode-button ${uploadType === 'url' ? 'active' : ''}`}
-                >
-                  From URL
-                </button>
-              </div>
-
-              {/* File Upload */}
-              {uploadType === 'file' && (
-                <div className="apple-upload-area" onClick={() => fileInputRef.current?.click()}>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
-                  />
-                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📄</div>
-                  <div style={{ fontSize: '1.125rem', fontWeight: '500', marginBottom: '0.25rem' }}>
-                    Click to upload PDF
-                  </div>
-                  <div className="apple-caption">
-                    Select a research paper or academic document (PDF format only, max 4.5MB)
-                  </div>
-                </div>
-              )}
-
-              {/* URL Upload */}
-              {uploadType === 'url' && (
-                <div>
-                  <label className="apple-label">PDF URL</label>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <input
-                      type="url"
-                      value={pdfUrl}
-                      onChange={(e) => setPdfUrl(e.target.value)}
-                      placeholder="https://example.com/research-paper.pdf (up to ~50MB)"
-                      className="apple-input"
-                      style={{ flex: 1 }}
-                    />
+            <div className="chat-sidebar">
+              <div className="sidebar-content">
+                <h3 className="sidebar-title">Research Documents</h3>
+                
+                {/* PDF Upload Section */}
+                <div className="sidebar-section">
+                  <h4 className="sidebar-section-title">Upload Documents</h4>
+                  
+                  {/* Upload Type Toggle */}
+                  <div className="sidebar-toggle">
                     <button
-                      onClick={handleUrlUpload}
-                      disabled={isUploading || !pdfUrl.trim()}
-                      className="apple-button apple-button-primary"
-                      style={{ whiteSpace: 'nowrap' }}
+                      onClick={() => setUploadType('file')}
+                      className={`sidebar-toggle-button ${uploadType === 'file' ? 'active' : ''}`}
                     >
-                      {isUploading ? 'Uploading...' : 'Upload'}
+                      File
+                    </button>
+                    <button
+                      onClick={() => setUploadType('url')}
+                      className={`sidebar-toggle-button ${uploadType === 'url' ? 'active' : ''}`}
+                    >
+                      URL
                     </button>
                   </div>
-                </div>
-              )}
 
-              {/* Upload Progress */}
-              {uploadProgress && (
-                <div className="apple-success">
-                  {uploadProgress}
-                </div>
-              )}
-
-              <p className="apple-caption" style={{ marginBottom: '1.5rem' }}>
-                URL uploads can handle much larger files than direct uploads since they bypass Vercel's request body limits. Practical limit: ~50-100MB depending on processing complexity.
-              </p>
-            </section>
-          )}
-
-          {/* PDF Selection Section */}
-          {chatMode === 'pdf' && uploadedPDFs.length > 0 && (
-            <section className="apple-section">
-              <h2 className="apple-section-title">Select Research Documents</h2>
-              <p className="apple-caption" style={{ marginBottom: '1.5rem' }}>
-                Choose up to 3 research documents for analysis and comparison
-              </p>
-              
-              {/* Selection Mode Toggle */}
-              <div className="apple-mode-toggle" style={{ marginBottom: '1.5rem' }}>
-                <button
-                  onClick={() => handleSelectionModeChange('single')}
-                  className={`apple-mode-button ${pdfSelectionMode === 'single' ? 'active' : ''}`}
-                >
-                  Single Document
-                </button>
-                <button
-                  onClick={() => handleSelectionModeChange('multiple')}
-                  className={`apple-mode-button ${pdfSelectionMode === 'multiple' ? 'active' : ''}`}
-                >
-                  Compare Documents
-                </button>
-              </div>
-
-              {/* Single PDF Selection */}
-              {pdfSelectionMode === 'single' && (
-                <div>
-                  <label className="apple-label">Select Document</label>
-                  <select
-                    value={selectedPdfIds[0] || ''}
-                    onChange={(e) => handleSinglePdfSelection(e.target.value)}
-                    className="apple-select"
-                  >
-                    <option value="">Choose a research document...</option>
-                    {uploadedPDFs.map((pdf) => (
-                      <option key={pdf.pdf_id} value={pdf.pdf_id}>
-                        {pdf.paper_title ? `${pdf.paper_title} (${pdf.filename})` : pdf.filename} ({pdf.source === 'url' ? 'URL' : 'File'} • {pdf.num_chunks} sections)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Multiple PDF Selection */}
-              {pdfSelectionMode === 'multiple' && (
-                <div className="apple-pdf-grid">
-                  {uploadedPDFs.map((pdf) => (
-                    <div
-                      key={pdf.pdf_id}
-                      className={`apple-pdf-item ${selectedPdfIds.includes(pdf.pdf_id) ? 'selected' : ''}`}
-                      onClick={() => handleMultiplePdfSelection(pdf.pdf_id, !selectedPdfIds.includes(pdf.pdf_id))}
-                    >
+                  {/* File Upload */}
+                  {uploadType === 'file' && (
+                    <div className="sidebar-upload-area" onClick={() => fileInputRef.current?.click()}>
                       <input
-                        type="checkbox"
-                        checked={selectedPdfIds.includes(pdf.pdf_id)}
-                        onChange={(e) => handleMultiplePdfSelection(pdf.pdf_id, e.target.checked)}
-                        className="apple-checkbox"
-                        onClick={(e) => e.stopPropagation()}
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileUpload}
+                        style={{ display: 'none' }}
                       />
-                      <div className="apple-pdf-info">
-                        <div className="apple-pdf-title">
-                          {pdf.paper_title ? pdf.paper_title : pdf.filename}
-                        </div>
-                        {pdf.paper_title && (
-                          <div className="apple-pdf-filename">
-                            {pdf.filename}
-                          </div>
-                        )}
-                        <div className="apple-pdf-meta">
-                          {pdf.source === 'url' ? 'From URL' : 'Uploaded File'} • {pdf.num_chunks} sections • {pdf.total_characters.toLocaleString()} characters
-                        </div>
-                      </div>
+                      <div className="upload-icon">📄</div>
+                      <div className="upload-text">Upload PDF</div>
+                      <div className="upload-caption">Max 4.5MB</div>
                     </div>
-                  ))}
-                  
-                  {selectedPdfIds.length > 0 && (
-                    <div className="apple-success">
-                      ✓ {selectedPdfIds.length} document{selectedPdfIds.length > 1 ? 's' : ''} selected for analysis
+                  )}
+
+                  {/* URL Upload */}
+                  {uploadType === 'url' && (
+                    <div className="sidebar-url-upload">
+                      <input
+                        type="url"
+                        value={pdfUrl}
+                        onChange={(e) => setPdfUrl(e.target.value)}
+                        placeholder="PDF URL..."
+                        className="sidebar-input"
+                      />
+                      <button
+                        onClick={handleUrlUpload}
+                        disabled={isUploading || !pdfUrl.trim()}
+                        className="sidebar-button"
+                      >
+                        {isUploading ? 'Uploading...' : 'Upload'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Upload Progress */}
+                  {uploadProgress && (
+                    <div className="sidebar-success">
+                      {uploadProgress}
                     </div>
                   )}
                 </div>
-              )}
-            </section>
+
+                {/* PDF Selection Section */}
+                {uploadedPDFs.length > 0 && (
+                  <div className="sidebar-section">
+                    <h4 className="sidebar-section-title">Select Documents</h4>
+                    
+                    {/* Selection Mode Toggle */}
+                    <div className="sidebar-toggle">
+                      <button
+                        onClick={() => handleSelectionModeChange('single')}
+                        className={`sidebar-toggle-button ${pdfSelectionMode === 'single' ? 'active' : ''}`}
+                      >
+                        Single
+                      </button>
+                      <button
+                        onClick={() => handleSelectionModeChange('multiple')}
+                        className={`sidebar-toggle-button ${pdfSelectionMode === 'multiple' ? 'active' : ''}`}
+                      >
+                        Multiple
+                      </button>
+                    </div>
+
+                    {/* PDF List */}
+                    <div className="sidebar-pdf-list">
+                      {uploadedPDFs.map((pdf) => (
+                        <div
+                          key={pdf.pdf_id}
+                          className={`sidebar-pdf-item ${selectedPdfIds.includes(pdf.pdf_id) ? 'selected' : ''}`}
+                          onClick={() => {
+                            if (pdfSelectionMode === 'single') {
+                              handleSinglePdfSelection(selectedPdfIds.includes(pdf.pdf_id) ? '' : pdf.pdf_id)
+                            } else {
+                              handleMultiplePdfSelection(pdf.pdf_id, !selectedPdfIds.includes(pdf.pdf_id))
+                            }
+                          }}
+                        >
+                          {pdfSelectionMode === 'multiple' && (
+                            <input
+                              type="checkbox"
+                              checked={selectedPdfIds.includes(pdf.pdf_id)}
+                              onChange={(e) => handleMultiplePdfSelection(pdf.pdf_id, e.target.checked)}
+                              className="sidebar-checkbox"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                          <div className="sidebar-pdf-info">
+                            <div className="sidebar-pdf-title">
+                              {pdf.paper_title ? pdf.paper_title : pdf.filename}
+                            </div>
+                            {pdf.paper_title && (
+                              <div className="sidebar-pdf-filename">
+                                {pdf.filename}
+                              </div>
+                            )}
+                            <div className="sidebar-pdf-meta">
+                              {pdf.source === 'url' ? 'URL' : 'File'} • {pdf.num_chunks} sections
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {selectedPdfIds.length > 0 && (
+                      <div className="sidebar-success">
+                        ✓ {selectedPdfIds.length} document{selectedPdfIds.length > 1 ? 's' : ''} selected
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
-          {/* Chat Section */}
-          <section className="apple-section">
-            <h2 className="apple-section-title">
-              {chatMode === 'regular' ? 'Chat with AI' : 'Research Analysis'}
-            </h2>
-            
-            <form onSubmit={chatMode === 'regular' ? handleRegularChat : handlePDFChat}>
+          {/* Chat Area */}
+          <div className="chat-area">
+            {/* Chat History */}
+            <div className="chat-history" ref={chatHistoryRef}>
+              {chatHistory.length === 0 ? (
+                <div className="chat-welcome">
+                  <div className="welcome-icon">
+                    {chatMode === 'regular' ? '💬' : '📚'}
+                  </div>
+                  <h3>
+                    {chatMode === 'regular' 
+                      ? 'Welcome to OpenAI Chat' 
+                      : 'Welcome to Research Analysis'}
+                  </h3>
+                  <p>
+                    {chatMode === 'regular' 
+                      ? 'Start a conversation with AI. You can ask questions, request help, or have a discussion on any topic.'
+                      : 'Upload research documents and start analyzing them. You can ask questions, compare findings, or explore key insights.'}
+                  </p>
+                  {chatMode === 'pdf' && selectedPdfIds.length === 0 && (
+                    <p className="welcome-hint">
+                      👈 Upload and select documents from the sidebar to get started.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                chatHistory.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`chat-message ${message.type === 'user' ? 'user' : 'assistant'}`}
+                  >
+                    <div className="message-content">
+                      {message.type === 'assistant' ? (
+                        <ReactMarkdown
+                          components={{
+                            code({ className, children, ...props }) {
+                              const isCodeBlock = className?.includes('language-')
+                              
+                              return isCodeBlock ? (
+                                <pre className="code-block">
+                                  <code className={className} {...props}>
+                                    {children}
+                                  </code>
+                                </pre>
+                              ) : (
+                                <code className="inline-code" {...props}>
+                                  {children}
+                                </code>
+                              )
+                            }
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      ) : (
+                        <div className="user-message-text">{message.content}</div>
+                      )}
+                    </div>
+                    <div className="message-timestamp">
+                      {message.timestamp.toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Chat Input */}
+            <div className="chat-input-container">
+              {/* Developer Message for Regular Chat */}
               {chatMode === 'regular' && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label className="apple-label">Developer Message (Optional)</label>
-                  <textarea
+                <div className="developer-message-section">
+                  <input
+                    type="text"
                     name="developer_message"
                     value={regularFormData.developer_message}
                     onChange={handleRegularInputChange}
-                    placeholder="Enter instructions or context for the AI..."
-                    className="apple-textarea"
-                    rows={3}
+                    placeholder="Optional: Add system instructions or context..."
+                    className="developer-input"
                   />
                 </div>
               )}
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label className="apple-label">
-                  {chatMode === 'regular' ? 'Your Message' : 'Your Question'}
-                </label>
-                <textarea
-                  name="user_message"
-                  value={chatMode === 'regular' ? regularFormData.user_message : pdfFormData.user_message}
-                  onChange={chatMode === 'regular' ? handleRegularInputChange : handlePDFInputChange}
-                  placeholder={
-                    chatMode === 'regular' 
-                      ? "Ask me anything..."
-                      : pdfSelectionMode === 'multiple' && selectedPdfIds.length > 1 
-                        ? "Ask questions to analyze or compare the selected research documents..."
-                        : "Ask a question about the selected research document..."
-                  }
-                  className="apple-textarea"
-                  rows={4}
-                />
-              </div>
-
+              
+              {/* Error Display */}
               {error && (
-                <div className="apple-error">
+                <div className="chat-error">
                   {error}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={isLoading || !apiKey || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
-                className="apple-button apple-button-primary"
-                style={{ width: '100%' }}
-              >
-                {isLoading ? (
-                  <div className="apple-loading">
-                    <div className="apple-spin" style={{ width: '1rem', height: '1rem', border: '2px solid #ffffff40', borderTop: '2px solid #ffffff', borderRadius: '50%' }}></div>
-                    {chatMode === 'regular' ? 'Thinking...' : 'Analyzing...'}
-                  </div>
-                ) : (
-                  <>
-                    {chatMode === 'regular' ? '💬 Send Message' : '🔍 Analyze Documents'}
-                  </>
-                )}
-              </button>
-            </form>
-          </section>
-
-          {/* Response Section */}
-          {response && (
-            <section className="apple-response apple-fade-in">
-              <h3 className="apple-section-title" style={{ marginBottom: '1.5rem' }}>Response</h3>
-              <ReactMarkdown
-                components={{
-                  code({ className, children, ...props }) {
-                    const isCodeBlock = className?.includes('language-')
-                    
-                    return isCodeBlock ? (
-                      <pre style={{ 
-                        background: 'var(--apple-surface)', 
-                        padding: '1.5rem', 
-                        borderRadius: '12px', 
-                        overflow: 'auto',
-                        border: '1px solid var(--apple-border)',
-                        fontSize: '0.875rem',
-                        lineHeight: '1.6',
-                        fontFamily: 'Monaco, Menlo, "SF Mono", Consolas, "Liberation Mono", "Courier New", monospace'
-                      }}>
-                        <code 
-                          className={className} 
-                          style={{ 
-                            background: 'transparent',
-                            padding: '0',
-                            border: 'none',
-                            borderRadius: '0'
-                          }}
-                          {...props}
-                        >
-                          {children}
-                        </code>
-                      </pre>
+              {/* Message Input */}
+              <div className="message-input-section">
+                <div className="message-input-container">
+                  <textarea
+                    value={currentMessage}
+                    onChange={(e) => setCurrentMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder={
+                      chatMode === 'regular' 
+                        ? "Type your message..."
+                        : selectedPdfIds.length > 0 
+                          ? "Ask a question about your documents..."
+                          : "Select documents first, then ask your question..."
+                    }
+                    className="message-input"
+                    rows={1}
+                    disabled={isLoading || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={isLoading || !currentMessage.trim() || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
+                    className="send-button"
+                  >
+                    {isLoading ? (
+                      <div className="loading-spinner"></div>
                     ) : (
-                      <code 
-                        className={className} 
-                        style={{
-                          background: 'var(--apple-surface)',
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '6px',
-                          border: '1px solid var(--apple-border)',
-                          fontSize: '0.875rem',
-                          fontFamily: 'Monaco, Menlo, "SF Mono", Consolas, "Liberation Mono", "Courier New", monospace'
-                        }}
-                        {...props}
-                      >
-                        {children}
-                      </code>
-                    )
-                  }
-                }}
-              >
-                {response}
-              </ReactMarkdown>
-            </section>
-          )}
+                      '↗️'
+                    )}
+                  </button>
+                </div>
+                
+                {/* Model Selection */}
+                <div className="model-selection">
+                  <select
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="model-select"
+                  >
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4">GPT-4</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>
