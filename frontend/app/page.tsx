@@ -70,22 +70,7 @@ export default function Home() {
   const [pdfUrl, setPdfUrl] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Load stored API key on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('openai_api_key')
-    if (stored) {
-      setApiKey(stored)
-    }
-  }, [])
 
-  // Save API key to localStorage when it changes
-  useEffect(() => {
-    if (apiKey) {
-      localStorage.setItem('openai_api_key', apiKey)
-    } else {
-      localStorage.removeItem('openai_api_key')
-    }
-  }, [apiKey])
 
   // Auto-scroll chat history
   useEffect(() => {
