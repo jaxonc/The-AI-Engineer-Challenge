@@ -93,6 +93,17 @@ export default function Home() {
       return
     }
 
+    // Client-side file size validation (10MB limit)
+    const maxFileSize = 10 * 1024 * 1024 // 10MB in bytes
+    if (file.size > maxFileSize) {
+      setError('File too large. Please upload a PDF smaller than 10MB.')
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
     setIsUploading(true)
     setUploadProgress('Uploading PDF...')
     setError('')
@@ -110,8 +121,22 @@ export default function Home() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.detail || 'Upload failed')
+        let errorMessage = 'Upload failed'
+        try {
+          const errorData = await res.json()
+          errorMessage = errorData.detail || errorData.error || 'Upload failed'
+        } catch (parseError) {
+          // Handle non-JSON responses (e.g., HTML error pages from Vercel)
+          const errorText = await res.text()
+          if (errorText.includes('Request Entity Too Large') || res.status === 413) {
+            errorMessage = 'File too large. Please upload a smaller PDF (max 10MB recommended)'
+          } else if (errorText.includes('Bad Request') || res.status === 400) {
+            errorMessage = 'Invalid file format. Please upload a valid PDF file'
+          } else {
+            errorMessage = `Upload failed (${res.status}): ${errorText.substring(0, 100)}...`
+          }
+        }
+        throw new Error(errorMessage)
       }
 
       const data = await res.json()
@@ -164,8 +189,22 @@ export default function Home() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || 'URL upload failed')
+        let errorMessage = 'URL upload failed'
+        try {
+          const errorData = await res.json()
+          errorMessage = errorData.error || errorData.detail || 'URL upload failed'
+        } catch (parseError) {
+          // Handle non-JSON responses (e.g., HTML error pages from Vercel)
+          const errorText = await res.text()
+          if (errorText.includes('Request Entity Too Large') || res.status === 413) {
+            errorMessage = 'PDF file too large. Please use a smaller PDF (max 10MB recommended)'
+          } else if (errorText.includes('Bad Request') || res.status === 400) {
+            errorMessage = 'Invalid PDF URL or file format'
+          } else {
+            errorMessage = `URL upload failed (${res.status}): ${errorText.substring(0, 100)}...`
+          }
+        }
+        throw new Error(errorMessage)
       }
 
       const data = await res.json()
@@ -208,8 +247,16 @@ export default function Home() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.detail || 'Request failed')
+        let errorMessage = 'Request failed'
+        try {
+          const errorData = await res.json()
+          errorMessage = errorData.detail || errorData.error || 'Request failed'
+        } catch (parseError) {
+          // Handle non-JSON responses
+          const errorText = await res.text()
+          errorMessage = `Request failed (${res.status}): ${errorText.substring(0, 100)}...`
+        }
+        throw new Error(errorMessage)
       }
 
       const reader = res.body?.getReader()
@@ -266,8 +313,16 @@ export default function Home() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.detail || 'Request failed')
+        let errorMessage = 'Request failed'
+        try {
+          const errorData = await res.json()
+          errorMessage = errorData.detail || errorData.error || 'Request failed'
+        } catch (parseError) {
+          // Handle non-JSON responses
+          const errorText = await res.text()
+          errorMessage = `Request failed (${res.status}): ${errorText.substring(0, 100)}...`
+        }
+        throw new Error(errorMessage)
       }
 
       const reader = res.body?.getReader()
@@ -442,7 +497,7 @@ export default function Home() {
                     Click to upload PDF
                   </div>
                   <div className="apple-caption">
-                    Select a research paper or academic document (PDF format only)
+                    Select a research paper or academic document (PDF format only, max 10MB)
                   </div>
                 </div>
               )}
@@ -456,7 +511,7 @@ export default function Home() {
                       type="url"
                       value={pdfUrl}
                       onChange={(e) => setPdfUrl(e.target.value)}
-                      placeholder="https://example.com/research-paper.pdf"
+                      placeholder="https://example.com/research-paper.pdf (max 10MB)"
                       className="apple-input"
                       style={{ flex: 1 }}
                     />
