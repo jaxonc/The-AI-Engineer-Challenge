@@ -440,30 +440,38 @@ export default function Home() {
           </p>
           
           <div className="apple-header-controls">
-            <div className="apple-mode-toggle">
-              <button
-                onClick={() => setChatMode('regular')}
-                className={`apple-mode-button ${chatMode === 'regular' ? 'active' : ''}`}
-              >
-                💬 General Chat
-              </button>
-              <button
-                onClick={() => setChatMode('pdf')}
-                className={`apple-mode-button ${chatMode === 'pdf' ? 'active' : ''}`}
-              >
-                📚 Research Analysis
-              </button>
-            </div>
-            
-            <div className="apple-api-key-section">
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter OpenAI API key (sk-...)"
-                className="apple-input"
-                style={{ background: 'rgba(255, 255, 255, 0.95)', color: 'var(--apple-primary)' }}
-              />
+            <div className="apple-control-group">
+              <div className="apple-control-section">
+                <label className="apple-control-label">Mode Selection</label>
+                <div className="apple-mode-toggle">
+                  <button
+                    onClick={() => setChatMode('regular')}
+                    className={`apple-mode-button ${chatMode === 'regular' ? 'active' : ''}`}
+                  >
+                    💬 General Chat
+                  </button>
+                  <button
+                    onClick={() => setChatMode('pdf')}
+                    className={`apple-mode-button ${chatMode === 'pdf' ? 'active' : ''}`}
+                  >
+                    📚 Research Analysis
+                  </button>
+                </div>
+              </div>
+              
+              <div className="apple-control-section">
+                <label className="apple-control-label">API Key Input</label>
+                <div className="apple-api-key-section">
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="Enter OpenAI API key (sk-...)"
+                    className="apple-input"
+                    style={{ background: 'rgba(255, 255, 255, 0.95)', color: 'var(--apple-primary)' }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
