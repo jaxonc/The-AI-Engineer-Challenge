@@ -44,6 +44,7 @@ class PDFChatRequest(BaseModel):
     pdf_ids: list[str]    # List of PDF IDs (supports 1-3 PDFs)
     model: Optional[str] = "gpt-4o-mini"  # Optional model selection with default
     api_key: str          # OpenAI API key for authentication
+    context_summary: Optional[str] = None  # Optional conversation context/summary
 
 # Define the data model for PDF URL uploads
 class PDFUrlRequest(BaseModel):
@@ -351,6 +352,17 @@ async def chat_pdf(request: PDFChatRequest):
             # Use paper title if available, otherwise use filename
             display_name = paper_title if paper_title else pdf_name
             
+            # Build system prompt with optional conversation context
+            context_section = f"""**Context:**
+{context}"""
+            
+            if request.context_summary:
+                context_section = f"""**Conversation Context:**
+{request.context_summary}
+
+**Document Context:**
+{context}"""
+            
             system_prompt = f"""You are a research assistant specializing in academic publication analysis. Answer questions based on the provided context from the research document.
 
 **Document Information:**
@@ -377,8 +389,7 @@ async def chat_pdf(request: PDFChatRequest):
 - Structure your response logically with clear sections
 - Use academic language appropriate for research analysis
 
-**Context:**
-{context}
+{context_section}
 
 Please provide a well-formatted, scholarly response based on the context above."""
         else:
@@ -392,6 +403,17 @@ Please provide a well-formatted, scholarly response based on the context above."
                 pdf_details.append(f"- {display_name} ({source_info})")
             
             papers_list = "\n".join(pdf_details)
+            
+            # Build system prompt with optional conversation context
+            context_section = f"""**Context:**
+{context}"""
+            
+            if request.context_summary:
+                context_section = f"""**Conversation Context:**
+{request.context_summary}
+
+**Document Context:**
+{context}"""
             
             system_prompt = f"""You are a research assistant specializing in comparative analysis of academic publications. Answer questions based on the provided context from {len(request.pdf_ids)} research documents.
 
@@ -420,8 +442,7 @@ Please provide a well-formatted, scholarly response based on the context above."
 - Structure your response logically with clear sections for each paper or theme
 - Use academic language appropriate for research analysis
 
-**Context:**
-{context}
+{context_section}
 
 Please provide a well-formatted, scholarly response with proper citations based on the context above."""
         

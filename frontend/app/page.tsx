@@ -15,6 +15,7 @@ interface PDFChatRequest {
   pdf_ids: string[]
   model: string
   api_key: string
+  context_summary?: string
 }
 
 interface UploadedPDF {
@@ -173,9 +174,49 @@ export default function Home() {
     return ''
   }
 
-  // Check if summary should be updated (every 25 messages)
+  // Check if summary should be updated (first time at 25 messages)
   const shouldUpdateSummary = (history: ChatMessage[]): boolean => {
-    return history.length > 0 && history.length % 25 === 0
+    return history.length === 25
+  }
+
+  // Build context from recent messages (for conversations under 25 messages)
+  const buildRecentMessageContext = (history: ChatMessage[]): string => {
+    if (history.length === 0) return ''
+    
+    // Take last 10 messages for context (or all if less than 10)
+    const recentMessages = history.slice(-10)
+    const contextMessages = recentMessages
+      .map(msg => `${msg.type.toUpperCase()}: ${msg.content}`)
+      .join('\n')
+    
+    return contextMessages ? `Recent conversation context:\n${contextMessages}` : ''
+  }
+
+  // Get comprehensive context (summary + recent messages or just recent messages)
+  const getComprehensiveContext = (): string => {
+    const currentHistory = getCurrentChatHistory()
+    const summary = getCurrentContextSummary()
+    
+    if (currentHistory.length < 25) {
+      // Phase 1: Use recent messages (1-24 messages)
+      return buildRecentMessageContext(currentHistory)
+    } else {
+      // Phase 2: Use summary + last 5 messages (25+ messages)
+      const recentMessages = currentHistory.slice(-5)
+      const recentContext = recentMessages
+        .map(msg => `${msg.type.toUpperCase()}: ${msg.content}`)
+        .join('\n')
+      
+      if (summary && recentContext) {
+        return `Previous conversation summary: ${summary}\n\nRecent messages:\n${recentContext}`
+      } else if (summary) {
+        return `Previous conversation summary: ${summary}`
+      } else if (recentContext) {
+        return `Recent conversation context:\n${recentContext}`
+      }
+    }
+    
+    return ''
   }
 
   // Add message to chat history
@@ -436,14 +477,14 @@ export default function Home() {
       let requestData: any
       let endpoint: string
 
-      // Get current context summary
-      const contextSummary = getCurrentContextSummary()
+      // Get comprehensive context
+      const context = getComprehensiveContext()
 
       if (chatMode === 'regular') {
-        // Include context summary in developer message for regular chat
+        // Include context in developer message for regular chat
         let developerMessage = regularFormData.developer_message
-        if (contextSummary) {
-          developerMessage = `Previous conversation context: ${contextSummary}\n\n${developerMessage || 'You are a helpful AI assistant.'}`
+        if (context) {
+          developerMessage = `Previous conversation context: ${context}\n\n${developerMessage || 'You are a helpful AI assistant.'}`
         }
 
         requestData = {
@@ -464,7 +505,7 @@ export default function Home() {
           pdf_ids: selectedPdfIds,
           api_key: apiKey,
           model,
-          context_summary: contextSummary // Include context for PDF chat
+          context_summary: context // Include context for PDF chat
         }
         endpoint = '/api/chat-pdf'
       }
