@@ -16,10 +16,5 @@
         "src": "/(.*)", 
         "dest": "frontend/$1"
       }
-    ],
-    "functions": {
-      "api/app.py": {
-        "maxDuration": 30
-      }
-    }
+    ]
   } 
