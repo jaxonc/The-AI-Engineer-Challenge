@@ -1,25 +1,12 @@
 ---
-description: 
-globs: 
 alwaysApply: false
 ---
 # Branch Development Workflow Rules
 
 ## Git Workflow Requirements
-
 - You must always prefer to use branch development over working directly on main
 - Before writing any code changes, you must create a feature branch to hold those changes
-- Feature branches should be named descriptively (e.g., `feature/add-user-authentication`, `fix/api-response-error`, `update/frontend-styling`)
-- Never commit directly to the main branch - all changes must go through a feature branch
-- Each feature or fix should be contained in its own dedicated branch
-- Always ensure your feature branch is up-to-date with main before starting work: `git checkout main && git pull origin main`
-- When creating a feature branch, use: `git checkout -b feature/descriptive-name`
-- Make regular commits with clear, descriptive commit messages on your feature branch
-- Before merging, ensure all tests pass and code is properly documented
 
-## Branch Naming Convention
+## Updating Merge.md
+After you are done updating a feature branch - provide instructions in a "MERGE.md" file that explains how to merge the changes back to main with both a GitHub PR route and a GitHub CLI route.
 
-- Features: `feature/description-of-feature`
-- Bug fixes: `fix/description-of-fix` 
-- Updates/Improvements: `update/description-of-update`
-- Hotfixes: `hotfix/description-of-urgent-fix`

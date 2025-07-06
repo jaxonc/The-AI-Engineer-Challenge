@@ -1,7 +1,7 @@
-# Merge Instructions for PDF RAG Feature
+# Merge Instructions for PDF RAG Feature v2
 
 ## Feature Summary
-This branch (`feature/pdf-rag-system`) implements a complete PDF RAG system allowing users to upload PDFs, index them using embeddings, and chat with their content using AI.
+This branch (`feature/pdf-rag-system-v2`) implements a complete PDF RAG system allowing users to upload PDFs, index them using embeddings, and chat with their content using AI.
 
 ## Changes Made
 - **Backend (FastAPI)**: New endpoints for PDF upload, indexing, chat, and management
@@ -13,14 +13,14 @@ This branch (`feature/pdf-rag-system`) implements a complete PDF RAG system allo
 
 ### Step 1: Push Feature Branch
 ```bash
-git push -u origin feature/pdf-rag-system
+git push -u origin feature/pdf-rag-system-v2
 ```
 
 ### Step 2: Create Pull Request
 1. Navigate to GitHub repository
 2. Click "Compare & pull request"
-3. Set base: `main`, compare: `feature/pdf-rag-system`
-4. Title: "Add PDF RAG system with aimakerspace integration"
+3. Set base: `main`, compare: `feature/pdf-rag-system-v2`
+4. Title: "Add PDF RAG system v2 with aimakerspace integration"
 5. Add description of changes and testing notes
 6. Create pull request
 
@@ -35,7 +35,7 @@ git push -u origin feature/pdf-rag-system
 ```bash
 git checkout main
 git pull origin main
-git branch -d feature/pdf-rag-system
+git branch -d feature/pdf-rag-system-v2
 git remote prune origin
 ```
 
@@ -44,7 +44,7 @@ git remote prune origin
 ### Create PR with CLI
 ```bash
 gh pr create \
-  --title "Add PDF RAG system with aimakerspace integration" \
+  --title "Add PDF RAG system v2 with aimakerspace integration" \
   --body "Implements comprehensive PDF RAG functionality with upload, indexing, and semantic chat"
 ```
 
@@ -118,7 +118,7 @@ If issues are discovered after merge:
 
 ```bash
 # Find the merge commit hash
-git log --oneline --grep="pdf-rag"
+git log --oneline --grep="pdf-rag-v2"
 
 # Create a revert commit
 git revert -m 1 <merge-commit-hash>
@@ -128,9 +128,9 @@ git push origin main
 Or create a hotfix branch:
 
 ```bash
-git checkout -b hotfix/pdf-rag-issues
+git checkout -b hotfix/pdf-rag-v2-issues
 # Make fixes
-git push -u origin hotfix/pdf-rag-issues
+git push -u origin hotfix/pdf-rag-v2-issues
 # Create PR as above
 ```
 
