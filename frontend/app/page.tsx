@@ -193,9 +193,10 @@ export default function Home() {
   }
 
   // Get comprehensive context (summary + recent messages or just recent messages)
-  const getComprehensiveContext = (): string => {
-    const currentHistory = getCurrentChatHistory()
-    const summary = getCurrentContextSummary()
+  const getComprehensiveContext = (mode: ChatMode): string => {
+    // Get history and summary for the specified mode, not current UI mode
+    const currentHistory = mode === 'regular' ? regularChatHistory : pdfChatHistory
+    const summary = mode === 'regular' ? regularContextSummary : pdfContextSummary
     
     if (currentHistory.length < 25) {
       // Phase 1: Use recent messages (1-24 messages)
@@ -500,7 +501,7 @@ export default function Home() {
       let endpoint: string
 
       // Get comprehensive context
-      const context = getComprehensiveContext()
+      const context = getComprehensiveContext(messageMode)
 
       if (messageMode === 'regular') {
         // Include context in developer message for regular chat
@@ -568,12 +569,16 @@ export default function Home() {
           updateLastAssistantMessage(accumulatedResponse, messageMode)
         }
 
-        // Check if we should update the conversation summary
-        const currentHistory = getCurrentChatHistory()
-        if (shouldUpdateSummary(currentHistory)) {
-          const newSummary = await createConversationSummary(currentHistory)
+        // Check if we should update the conversation summary for the message mode
+        const messageHistory = messageMode === 'regular' ? regularChatHistory : pdfChatHistory
+        if (shouldUpdateSummary(messageHistory)) {
+          const newSummary = await createConversationSummary(messageHistory)
           if (newSummary) {
-            setCurrentContextSummary(newSummary)
+            if (messageMode === 'regular') {
+              setRegularContextSummary(newSummary)
+            } else {
+              setPdfContextSummary(newSummary)
+            }
           }
         }
       }
