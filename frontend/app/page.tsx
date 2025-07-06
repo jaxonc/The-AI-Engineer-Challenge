@@ -123,18 +123,23 @@ export default function Home() {
       if (!res.ok) {
         let errorMessage = 'Upload failed'
         try {
-          const errorData = await res.json()
-          errorMessage = errorData.detail || errorData.error || 'Upload failed'
-        } catch (parseError) {
-          // Handle non-JSON responses (e.g., HTML error pages from Vercel)
-          const errorText = await res.text()
-          if (errorText.includes('Request Entity Too Large') || res.status === 413) {
-            errorMessage = 'File too large. Please upload a smaller PDF (max 10MB recommended)'
-          } else if (errorText.includes('Bad Request') || res.status === 400) {
-            errorMessage = 'Invalid file format. Please upload a valid PDF file'
-          } else {
-            errorMessage = `Upload failed (${res.status}): ${errorText.substring(0, 100)}...`
+          // Read response as text first, then try to parse as JSON
+          const responseText = await res.text()
+          try {
+            const errorData = JSON.parse(responseText)
+            errorMessage = errorData.detail || errorData.error || 'Upload failed'
+          } catch (jsonParseError) {
+            // Handle non-JSON responses (e.g., HTML error pages from Vercel)
+            if (responseText.includes('Request Entity Too Large') || res.status === 413) {
+              errorMessage = 'File too large. Please upload a smaller PDF (max 10MB recommended)'
+            } else if (responseText.includes('Bad Request') || res.status === 400) {
+              errorMessage = 'Invalid file format. Please upload a valid PDF file'
+            } else {
+              errorMessage = `Upload failed (${res.status}): ${responseText.substring(0, 100)}...`
+            }
           }
+        } catch (readError) {
+          errorMessage = `Upload failed (${res.status}): Unable to read response`
         }
         throw new Error(errorMessage)
       }
@@ -191,18 +196,23 @@ export default function Home() {
       if (!res.ok) {
         let errorMessage = 'URL upload failed'
         try {
-          const errorData = await res.json()
-          errorMessage = errorData.error || errorData.detail || 'URL upload failed'
-        } catch (parseError) {
-          // Handle non-JSON responses (e.g., HTML error pages from Vercel)
-          const errorText = await res.text()
-          if (errorText.includes('Request Entity Too Large') || res.status === 413) {
-            errorMessage = 'PDF file too large. Please use a smaller PDF (max 10MB recommended)'
-          } else if (errorText.includes('Bad Request') || res.status === 400) {
-            errorMessage = 'Invalid PDF URL or file format'
-          } else {
-            errorMessage = `URL upload failed (${res.status}): ${errorText.substring(0, 100)}...`
+          // Read response as text first, then try to parse as JSON
+          const responseText = await res.text()
+          try {
+            const errorData = JSON.parse(responseText)
+            errorMessage = errorData.error || errorData.detail || 'URL upload failed'
+          } catch (jsonParseError) {
+            // Handle non-JSON responses (e.g., HTML error pages from Vercel)
+            if (responseText.includes('Request Entity Too Large') || res.status === 413) {
+              errorMessage = 'PDF file too large. Please use a smaller PDF (max 10MB recommended)'
+            } else if (responseText.includes('Bad Request') || res.status === 400) {
+              errorMessage = 'Invalid PDF URL or file format'
+            } else {
+              errorMessage = `URL upload failed (${res.status}): ${responseText.substring(0, 100)}...`
+            }
           }
+        } catch (readError) {
+          errorMessage = `URL upload failed (${res.status}): Unable to read response`
         }
         throw new Error(errorMessage)
       }
@@ -249,12 +259,17 @@ export default function Home() {
       if (!res.ok) {
         let errorMessage = 'Request failed'
         try {
-          const errorData = await res.json()
-          errorMessage = errorData.detail || errorData.error || 'Request failed'
-        } catch (parseError) {
-          // Handle non-JSON responses
-          const errorText = await res.text()
-          errorMessage = `Request failed (${res.status}): ${errorText.substring(0, 100)}...`
+          // Read response as text first, then try to parse as JSON
+          const responseText = await res.text()
+          try {
+            const errorData = JSON.parse(responseText)
+            errorMessage = errorData.detail || errorData.error || 'Request failed'
+          } catch (jsonParseError) {
+            // Handle non-JSON responses
+            errorMessage = `Request failed (${res.status}): ${responseText.substring(0, 100)}...`
+          }
+        } catch (readError) {
+          errorMessage = `Request failed (${res.status}): Unable to read response`
         }
         throw new Error(errorMessage)
       }
@@ -315,12 +330,17 @@ export default function Home() {
       if (!res.ok) {
         let errorMessage = 'Request failed'
         try {
-          const errorData = await res.json()
-          errorMessage = errorData.detail || errorData.error || 'Request failed'
-        } catch (parseError) {
-          // Handle non-JSON responses
-          const errorText = await res.text()
-          errorMessage = `Request failed (${res.status}): ${errorText.substring(0, 100)}...`
+          // Read response as text first, then try to parse as JSON
+          const responseText = await res.text()
+          try {
+            const errorData = JSON.parse(responseText)
+            errorMessage = errorData.detail || errorData.error || 'Request failed'
+          } catch (jsonParseError) {
+            // Handle non-JSON responses
+            errorMessage = `Request failed (${res.status}): ${responseText.substring(0, 100)}...`
+          }
+        } catch (readError) {
+          errorMessage = `Request failed (${res.status}): Unable to read response`
         }
         throw new Error(errorMessage)
       }
