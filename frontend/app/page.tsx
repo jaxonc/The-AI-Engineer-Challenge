@@ -229,19 +229,37 @@ export default function Home() {
       mode,
       pdfIds
     }
-    setCurrentChatHistory((prev: ChatMessage[]) => [...prev, message])
+    
+    // Use the message mode, not the current UI mode
+    if (mode === 'regular') {
+      setRegularChatHistory((prev: ChatMessage[]) => [...prev, message])
+    } else {
+      setPdfChatHistory((prev: ChatMessage[]) => [...prev, message])
+    }
   }
 
   // Update last assistant message (for streaming)
-  const updateLastAssistantMessage = (content: string) => {
-    setCurrentChatHistory((prev: ChatMessage[]) => {
-      const newHistory = [...prev]
-      const lastMessage = newHistory[newHistory.length - 1]
-      if (lastMessage && lastMessage.type === 'assistant') {
-        lastMessage.content = content
-      }
-      return newHistory
-    })
+  const updateLastAssistantMessage = (content: string, mode: ChatMode) => {
+    // Use the message mode, not the current UI mode
+    if (mode === 'regular') {
+      setRegularChatHistory((prev: ChatMessage[]) => {
+        const newHistory = [...prev]
+        const lastMessage = newHistory[newHistory.length - 1]
+        if (lastMessage && lastMessage.type === 'assistant') {
+          lastMessage.content = content
+        }
+        return newHistory
+      })
+    } else {
+      setPdfChatHistory((prev: ChatMessage[]) => {
+        const newHistory = [...prev]
+        const lastMessage = newHistory[newHistory.length - 1]
+        if (lastMessage && lastMessage.type === 'assistant') {
+          lastMessage.content = content
+        }
+        return newHistory
+      })
+    }
   }
 
   // Fetch uploaded PDFs
@@ -467,11 +485,15 @@ export default function Home() {
     setIsLoading(true)
     setError('')
 
+    // Capture the mode at the beginning to prevent race conditions
+    const messageMode = chatMode
+    const messagePdfIds = messageMode === 'pdf' ? selectedPdfIds : undefined
+
     // Add user message to history
-    addMessage('user', userMessage, chatMode, chatMode === 'pdf' ? selectedPdfIds : undefined)
+    addMessage('user', userMessage, messageMode, messagePdfIds)
 
     // Add empty assistant message for streaming
-    addMessage('assistant', '', chatMode, chatMode === 'pdf' ? selectedPdfIds : undefined)
+    addMessage('assistant', '', messageMode, messagePdfIds)
 
     try {
       let requestData: any
@@ -480,7 +502,7 @@ export default function Home() {
       // Get comprehensive context
       const context = getComprehensiveContext()
 
-      if (chatMode === 'regular') {
+      if (messageMode === 'regular') {
         // Include context in developer message for regular chat
         let developerMessage = regularFormData.developer_message
         if (context) {
@@ -543,7 +565,7 @@ export default function Home() {
           
           const chunk = new TextDecoder().decode(value)
           accumulatedResponse += chunk
-          updateLastAssistantMessage(accumulatedResponse)
+          updateLastAssistantMessage(accumulatedResponse, messageMode)
         }
 
         // Check if we should update the conversation summary
