@@ -234,8 +234,28 @@ body {
   z-index: 10;
 }
 
+.apple-header-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.apple-api-key-section {
+  width: 100%;
+  max-width: 400px;
+}
+
 .apple-main {
   padding: 3rem 0;
+}
+
+.chat-layout {
+  display: flex;
+  gap: 0;
+  min-height: 600px;
 }
 
 .apple-section {
@@ -627,11 +647,11 @@ body {
   color: var(--apple-secondary);
 }
 
-/* Chat App Layout */
-.chat-app {
+/* Apple App Layout */
+.apple-app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   background: var(--apple-background);
 }
 

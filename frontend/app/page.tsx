@@ -420,35 +420,49 @@ export default function Home() {
   }
 
   return (
-    <div className="chat-app">
-      {/* Header */}
-      <header className="chat-header">
-        <div className="chat-header-content">
-          <h1 className="chat-title">
+    <div className="apple-app">
+      {/* Galaxy Space Header */}
+      <header className="apple-header">
+        <div className="space-particle"></div>
+        <div className="space-particle"></div>
+        <div className="space-particle"></div>
+        <div className="space-particle"></div>
+        <div className="space-particle"></div>
+        
+        <div className="apple-header-content">
+          <h1 className="apple-title">
             {chatMode === 'regular' ? 'OpenAI API Chat Interface' : 'Research Literature Review Assistant'}
           </h1>
-          <div className="chat-header-actions">
-            <div className="chat-mode-toggle">
+          <p className="apple-subtitle">
+            {chatMode === 'regular' 
+              ? 'Intelligent conversations powered by OpenAI models'
+              : 'Advanced research document analysis and insights'}
+          </p>
+          
+          <div className="apple-header-controls">
+            <div className="apple-mode-toggle">
               <button
                 onClick={() => setChatMode('regular')}
-                className={`chat-mode-button ${chatMode === 'regular' ? 'active' : ''}`}
+                className={`apple-mode-button ${chatMode === 'regular' ? 'active' : ''}`}
               >
                 💬 General Chat
               </button>
               <button
                 onClick={() => setChatMode('pdf')}
-                className={`chat-mode-button ${chatMode === 'pdf' ? 'active' : ''}`}
+                className={`apple-mode-button ${chatMode === 'pdf' ? 'active' : ''}`}
               >
                 📚 Research Analysis
               </button>
             </div>
-            <div className="api-key-input-container">
+            
+            <div className="apple-api-key-section">
               <input
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="Enter OpenAI API key (sk-...)"
-                className="api-key-input"
+                className="apple-input"
+                style={{ background: 'rgba(255, 255, 255, 0.95)', color: 'var(--apple-primary)' }}
               />
             </div>
           </div>
@@ -456,11 +470,12 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="chat-main">
-        <div className="chat-container">
-          {/* Sidebar for PDF mode */}
-          {chatMode === 'pdf' && (
-            <div className="chat-sidebar">
+      <main className="apple-main">
+        <div className="apple-container">
+          <div className="chat-layout">
+            {/* Sidebar for PDF mode */}
+            {chatMode === 'pdf' && (
+              <div className="chat-sidebar">
               <div className="sidebar-content">
                 <h3 className="sidebar-title">Research Documents</h3>
                 
@@ -742,6 +757,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </main>
