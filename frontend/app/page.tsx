@@ -38,102 +38,7 @@ interface ChatMessage {
 
 type ChatMode = 'regular' | 'pdf'
 
-// Landing Page Component
-function LandingPage({ onApiKeySubmit }: { onApiKeySubmit: (apiKey: string) => void }) {
-  const [apiKey, setApiKey] = useState('')
-  const [error, setError] = useState('')
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!apiKey.trim()) {
-      setError('Please enter your OpenAI API key')
-      return
-    }
-    if (!apiKey.startsWith('sk-')) {
-      setError('API key should start with "sk-"')
-      return
-    }
-    onApiKeySubmit(apiKey.trim())
-  }
-
-  return (
-    <div className="landing-page">
-      <div className="space-particle"></div>
-      <div className="space-particle"></div>
-      <div className="space-particle"></div>
-      <div className="space-particle"></div>
-      <div className="space-particle"></div>
-      
-      <div className="landing-container">
-        <div className="landing-content">
-          <div className="landing-header">
-            <h1 className="apple-title">AI Research Assistant</h1>
-            <p className="apple-subtitle">
-              Your intelligent companion for general conversations and research paper analysis
-            </p>
-          </div>
-
-          <div className="landing-form">
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="apple-label">OpenAI API Key</label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your OpenAI API key (sk-...)"
-                  className="apple-input"
-                  autoFocus
-                />
-                <p className="apple-caption">
-                  Your API key is stored locally and never sent to our servers.
-                </p>
-              </div>
-
-              {error && (
-                <div className="apple-error">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={!apiKey.trim()}
-                className="apple-button apple-button-primary"
-                style={{ width: '100%' }}
-              >
-                Get Started
-              </button>
-            </form>
-          </div>
-
-          <div className="landing-features">
-            <div className="feature-grid">
-              <div className="feature-item">
-                <div className="feature-icon">💬</div>
-                <h3>General Chat</h3>
-                <p>Have conversations with AI models for any topic or task</p>
-              </div>
-              <div className="feature-item">
-                <div className="feature-icon">📚</div>
-                <h3>Research Analysis</h3>
-                <p>Upload and analyze research papers with advanced RAG capabilities</p>
-              </div>
-              <div className="feature-item">
-                <div className="feature-icon">🔍</div>
-                <h3>Document Comparison</h3>
-                <p>Compare up to 3 research documents simultaneously</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function Home() {
-  const [hasApiKey, setHasApiKey] = useState(false)
   const [chatMode, setChatMode] = useState<ChatMode>('regular')
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState('gpt-4o-mini')
@@ -165,14 +70,22 @@ export default function Home() {
   const [pdfUrl, setPdfUrl] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Check for stored API key on mount
+  // Load stored API key on mount
   useEffect(() => {
     const stored = localStorage.getItem('openai_api_key')
     if (stored) {
       setApiKey(stored)
-      setHasApiKey(true)
     }
   }, [])
+
+  // Save API key to localStorage when it changes
+  useEffect(() => {
+    if (apiKey) {
+      localStorage.setItem('openai_api_key', apiKey)
+    } else {
+      localStorage.removeItem('openai_api_key')
+    }
+  }, [apiKey])
 
   // Auto-scroll chat history
   useEffect(() => {
@@ -189,22 +102,6 @@ export default function Home() {
       document.title = 'Research Literature Review Assistant'
     }
   }, [chatMode])
-
-  // Handle API key submission from landing page
-  const handleApiKeySubmit = (key: string) => {
-    setApiKey(key)
-    setHasApiKey(true)
-    localStorage.setItem('openai_api_key', key)
-  }
-
-  // Handle logout (clear API key)
-  const handleLogout = () => {
-    setApiKey('')
-    setHasApiKey(false)
-    setChatHistory([])
-    setSelectedPdfIds([])
-    localStorage.removeItem('openai_api_key')
-  }
 
   // Add message to chat history
   const addMessage = (type: 'user' | 'assistant', content: string, mode: ChatMode, pdfIds?: string[]) => {
@@ -231,8 +128,10 @@ export default function Home() {
     })
   }
 
-  // Fetch uploaded PDFs on component mount
+  // Fetch uploaded PDFs
   const fetchPDFs = async () => {
+    if (!apiKey) return
+    
     try {
       const res = await fetch('/api/pdfs')
       if (res.ok) {
@@ -244,12 +143,12 @@ export default function Home() {
     }
   }
 
-  // Initialize PDFs on component mount
+  // Initialize PDFs when API key is available
   useEffect(() => {
-    if (hasApiKey) {
+    if (apiKey) {
       fetchPDFs()
     }
-  }, [hasApiKey])
+  }, [apiKey])
 
   // Handle PDF upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -262,11 +161,6 @@ export default function Home() {
     }
 
     // Client-side file size validation (4.5MB limit - Vercel's hard limit)
-    // NOTE: Vercel has a hard 4.5MB request body limit for serverless functions
-    // For larger files, consider:
-    // 1. Direct client uploads to blob storage (Vercel Blob, AWS S3, etc.)
-    // 2. Using a different hosting platform with higher limits
-    // 3. Splitting files or using file compression
     const maxFileSize = 4.5 * 1024 * 1024 // 4.5MB in bytes (Vercel's limit)
     if (file.size > maxFileSize) {
       setError('File too large. Please upload a PDF smaller than 4.5MB (Vercel limit).')
@@ -447,6 +341,10 @@ export default function Home() {
   // Handle sending messages
   const handleSendMessage = async () => {
     if (!currentMessage.trim()) return
+    if (!apiKey) {
+      setError('Please enter your OpenAI API key first')
+      return
+    }
 
     const userMessage = currentMessage.trim()
     setCurrentMessage('')
@@ -536,11 +434,6 @@ export default function Home() {
     }
   }
 
-  // Show landing page if no API key
-  if (!hasApiKey) {
-    return <LandingPage onApiKeySubmit={handleApiKeySubmit} />
-  }
-
   return (
     <div className="chat-app">
       {/* Header */}
@@ -564,9 +457,15 @@ export default function Home() {
                 📚 Research Analysis
               </button>
             </div>
-            <button onClick={handleLogout} className="logout-button">
-              🔐 Change API Key
-            </button>
+            <div className="api-key-input-container">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter OpenAI API key (sk-...)"
+                className="api-key-input"
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -735,7 +634,12 @@ export default function Home() {
                       ? 'Start a conversation with AI. You can ask questions, request help, or have a discussion on any topic.'
                       : 'Upload research documents and start analyzing them. You can ask questions, compare findings, or explore key insights.'}
                   </p>
-                  {chatMode === 'pdf' && selectedPdfIds.length === 0 && (
+                  {!apiKey && (
+                    <p className="welcome-hint">
+                      👆 Enter your OpenAI API key in the header to get started.
+                    </p>
+                  )}
+                  {chatMode === 'pdf' && selectedPdfIds.length === 0 && apiKey && (
                     <p className="welcome-hint">
                       👈 Upload and select documents from the sidebar to get started.
                     </p>
@@ -813,7 +717,9 @@ export default function Home() {
                     onChange={(e) => setCurrentMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={
-                      chatMode === 'regular' 
+                      !apiKey
+                        ? "Enter your API key first..."
+                        : chatMode === 'regular' 
                         ? "Type your message..."
                         : selectedPdfIds.length > 0 
                           ? "Ask a question about your documents..."
@@ -821,11 +727,11 @@ export default function Home() {
                     }
                     className="message-input"
                     rows={1}
-                    disabled={isLoading || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
+                    disabled={isLoading || !apiKey || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={isLoading || !currentMessage.trim() || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
+                    disabled={isLoading || !currentMessage.trim() || !apiKey || (chatMode === 'pdf' && selectedPdfIds.length === 0)}
                     className="send-button"
                   >
                     {isLoading ? (

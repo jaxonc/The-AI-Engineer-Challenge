@@ -599,77 +599,31 @@ body {
   animation: apple-spin 1s linear infinite;
 }
 
-/* Landing Page Styles */
-.landing-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* API Key Input in Header */
+.api-key-input-container {
   display: flex;
   align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
 }
 
-.landing-container {
-  width: 100%;
-  max-width: 500px;
-  padding: 2rem;
-}
-
-.landing-content {
-  background: white;
-  border-radius: 20px;
-  padding: 3rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.landing-header {
-  margin-bottom: 2rem;
-}
-
-.landing-form {
-  margin-bottom: 2rem;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-  text-align: left;
-}
-
-.landing-features {
-  margin-top: 2rem;
-}
-
-.feature-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.feature-item {
-  text-align: center;
-  padding: 1rem;
-  border-radius: 12px;
-  background: var(--apple-surface);
-}
-
-.feature-icon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.feature-item h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--apple-primary);
-}
-
-.feature-item p {
-  margin: 0;
+.api-key-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--apple-border);
+  border-radius: 6px;
   font-size: 0.875rem;
+  font-family: inherit;
+  background: white;
+  color: var(--apple-primary);
+  width: 250px;
+  transition: all 0.2s ease;
+}
+
+.api-key-input:focus {
+  outline: none;
+  border-color: var(--apple-accent);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.api-key-input::placeholder {
   color: var(--apple-secondary);
 }
 
@@ -1232,7 +1186,7 @@ body {
     max-width: 85%;
   }
   
-  .feature-grid {
-    grid-template-columns: 1fr;
+  .api-key-input {
+    width: 200px;
   }
 } 
